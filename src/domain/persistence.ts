@@ -12,6 +12,7 @@ import {
   StapleState,
   TastePreferences,
 } from '@/domain/types';
+import { recipeById } from '@/data/catalog';
 
 export interface LocalAccountRecord {
   profile: AccountProfile;
@@ -145,6 +146,67 @@ function normalizePreferences(value: unknown): TastePreferences {
   return result;
 }
 
+function validDate(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function normalizeMakeSessions(value: unknown): MakeSession[] {
+  if (!Array.isArray(value)) return [];
+
+  const byId = new Map<string, MakeSession>();
+  value.forEach((raw) => {
+    const session = record(raw);
+    if (typeof session.id !== 'string' || session.id.trim().length === 0) return;
+    if (typeof session.recipeId !== 'string' || !recipeIds.has(session.recipeId as RecipeId)) return;
+
+    const recipeId = session.recipeId as RecipeId;
+    const recipe = recipeById[recipeId];
+    if (!recipe || session.recipeVersionId !== recipe.versionId || !validDate(session.startedAt)) return;
+
+    const rawStepIndex =
+      typeof session.stepIndex === 'number' && Number.isFinite(session.stepIndex)
+        ? Math.trunc(session.stepIndex)
+        : -1;
+    const stepIndex = Math.max(-1, Math.min(recipe.steps.length - 1, rawStepIndex));
+    const rawServings =
+      typeof session.servings === 'number' && Number.isFinite(session.servings)
+        ? Math.trunc(session.servings)
+        : recipe.baseServings;
+    const servings = Math.max(1, Math.min(4, rawServings));
+    const completedAt = validDate(session.completedAt) ? session.completedAt : undefined;
+    const updatedAt = validDate(session.updatedAt) ? session.updatedAt : session.startedAt;
+    const feedback =
+      completedAt && (session.feedback === 'liked' || session.feedback === 'notForMe')
+        ? session.feedback
+        : undefined;
+
+    const currentStep = stepIndex >= 0 ? recipe.steps[stepIndex] : undefined;
+    const hasValidTimer =
+      !completedAt &&
+      validDate(session.timerTarget) &&
+      typeof session.timerStepId === 'string' &&
+      currentStep?.id === session.timerStepId &&
+      typeof currentStep.timerSeconds === 'number';
+
+    byId.set(session.id, {
+      id: session.id,
+      recipeId,
+      recipeVersionId: recipe.versionId,
+      servings,
+      stepIndex,
+      ...(hasValidTimer
+        ? { timerTarget: session.timerTarget as string, timerStepId: session.timerStepId as string }
+        : {}),
+      ...(completedAt ? { completedAt } : {}),
+      ...(feedback ? { feedback } : {}),
+      startedAt: session.startedAt,
+      updatedAt,
+    });
+  });
+
+  return [...byId.values()];
+}
+
 export function normalizeBarSnapshot(value: unknown): BarSnapshot {
   const source = record(value);
   const legacyStaples = record(source.staples);
@@ -187,7 +249,7 @@ export function normalizeBarSnapshot(value: unknown): BarSnapshot {
           }];
         }).slice(-5)
       : [],
-    makeSessions: Array.isArray(source.makeSessions) ? (source.makeSessions as MakeSession[]) : [],
+    makeSessions: normalizeMakeSessions(source.makeSessions),
     completedGuestImportIds: Array.isArray(source.completedGuestImportIds)
       ? source.completedGuestImportIds.filter((id): id is string => typeof id === 'string')
       : [],

@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   markLetterCompact: { fontSize: 23 },
   markDot: { position: 'absolute', right: -2, top: 8, width: 5, height: 5, borderRadius: 3, backgroundColor: colors.brass },
   wordmark: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 12, letterSpacing: 2.1 },
-  wordmarkSub: { marginTop: 3, color: colors.paperDim, fontFamily: fonts.body, fontSize: 8, letterSpacing: 1.2 },
+  wordmarkSub: { marginTop: 3, color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, letterSpacing: 1.2 },
   sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.lg },
   sectionHeadingCopy: { flex: 1, gap: 3 },
   sectionTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 28, lineHeight: 34 },

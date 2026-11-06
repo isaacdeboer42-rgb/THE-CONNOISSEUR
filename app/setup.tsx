@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ingredientById, ingredients } from '@/data/catalog';
+import { iceChoicesConfirmed } from '@/domain/onboarding';
 import { BasicId, IngredientId, StapleState } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -36,7 +37,6 @@ function BasicSelector({
         {([
           ['available', 'Yes'],
           ['unavailable', 'Not now'],
-          ['unknown', 'Unsure'],
         ] as const).map(([option, optionLabel]) => (
           <Pressable
             key={option}
@@ -67,6 +67,7 @@ export default function SetupScreen() {
   } = useBar();
 
   const inventoryIds = new Set(snapshot.inventory.filter((item) => item.status === 'onHand').map((item) => item.ingredientId));
+  const outOfStockIds = new Set(snapshot.inventory.filter((item) => item.status === 'outOfStock').map((item) => item.ingredientId));
   const selectable = useMemo(
     () =>
       ingredients.filter((ingredient) => {
@@ -78,6 +79,7 @@ export default function SetupScreen() {
   );
   const readyCount = recommendations.filter((match) => match.category === 'ready').length;
   const nearCount = recommendations.filter((match) => match.category === 'oneAway').length;
+  const iceConfirmed = iceChoicesConfirmed(snapshot.basics);
 
   return (
     <Screen>
@@ -132,25 +134,28 @@ export default function SetupScreen() {
         <View style={styles.ingredientGrid}>
           {selectable.map((ingredient) => {
             const selected = inventoryIds.has(ingredient.id);
+            const outOfStock = outOfStockIds.has(ingredient.id);
             return (
               <Pressable
                 key={ingredient.id}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: selected }}
-                accessibilityLabel={ingredient.name}
+                accessibilityLabel={`${ingredient.name}${outOfStock ? ', out of stock. Activate to restock' : ''}`}
                 onPress={() => (selected ? removeIngredient(ingredient.id) : addIngredient(ingredient.id))}
-                style={({ pressed }) => [styles.ingredientCard, selected && styles.ingredientCardSelected, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.ingredientCard, selected && styles.ingredientCardSelected, outOfStock && styles.ingredientCardOutOfStock, pressed && styles.pressed]}
               >
-                <View style={[styles.ingredientInitial, selected && styles.ingredientInitialSelected]}>
-                  <Text style={[styles.ingredientInitialText, selected && styles.ingredientInitialTextSelected]}>
-                    {selected ? '✓' : ingredient.shortName.charAt(0)}
+                <View style={[styles.ingredientInitial, selected && styles.ingredientInitialSelected, outOfStock && styles.ingredientInitialOutOfStock]}>
+                  <Text style={[styles.ingredientInitialText, selected && styles.ingredientInitialTextSelected, outOfStock && styles.ingredientInitialTextOutOfStock]}>
+                    {selected ? '✓' : outOfStock ? '↻' : ingredient.shortName.charAt(0)}
                   </Text>
                 </View>
                 <View style={styles.ingredientCopy}>
                   <Text style={styles.ingredientName}>{ingredient.shortName}</Text>
-                  <Text style={styles.ingredientCategory}>{ingredient.category}</Text>
+                  <Text style={styles.ingredientCategory}>{outOfStock ? `${ingredient.category} · Out of stock` : ingredient.category}</Text>
                 </View>
-                <Text style={[styles.addGlyph, selected && styles.addGlyphSelected]}>{selected ? 'Added' : '＋'}</Text>
+                <Text style={[styles.addGlyph, selected && styles.addGlyphSelected, outOfStock && styles.restockGlyph]}>
+                  {selected ? 'Added' : outOfStock ? 'Restock' : '＋'}
+                </Text>
               </Pressable>
             );
           })}
@@ -159,6 +164,7 @@ export default function SetupScreen() {
         <View style={styles.sectionIntro}>
           <Eyebrow>Kitchen basics</Eyebrow>
           <Text accessibilityRole="header" style={styles.sectionTitle}>Which ice do you keep?</Text>
+          <Text style={styles.sectionBody}>Choose an answer for each type. Ice affects whether a drink is ready now, so we will not guess.</Text>
         </View>
         <View style={styles.staples}>
           <BasicSelector
@@ -184,13 +190,18 @@ export default function SetupScreen() {
 
         <Button
           label="See my matches"
+          disabled={!iceConfirmed}
           onPress={() => {
             completeOnboarding();
             router.replace('/(tabs)/tonight');
           }}
-          accessibilityHint="Opens tonight’s cocktail recommendations"
+          accessibilityHint={iceConfirmed ? 'Opens tonight’s cocktail recommendations' : 'Choose Yes or Not now for both ice types first'}
         />
-        <Text style={styles.skipNote}>You can continue at any point and refine your bar later.</Text>
+        <Text accessibilityLiveRegion="polite" style={[styles.skipNote, !iceConfirmed && styles.iceRequiredNote]}>
+          {iceConfirmed
+            ? 'Ice choices saved. You can change them whenever your freezer changes.'
+            : 'Confirm both ice types above to see accurate matches.'}
+        </Text>
       </ScreenScroll>
     </Screen>
   );
@@ -199,13 +210,13 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   scrollContent: { paddingBottom: spacing.huge },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, marginBottom: spacing.xxxl },
-  stepLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 9, letterSpacing: 1.4 },
+  stepLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.2 },
   headerSpacer: { width: 44 },
   title: { color: colors.paper, fontFamily: fonts.display, fontSize: 42, lineHeight: 48, marginTop: spacing.sm },
   subtitle: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 15, lineHeight: 23, maxWidth: 520, marginTop: spacing.md },
   starterCard: { marginTop: spacing.xxl, padding: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(215,170,98,0.22)', backgroundColor: colors.surfaceWarm },
   starterBadge: { alignSelf: 'flex-start', backgroundColor: colors.brassSoft, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 5 },
-  starterBadgeText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.2 },
+  starterBadgeText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.1 },
   starterTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 26, marginTop: spacing.md },
   starterBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, marginTop: spacing.sm, maxWidth: 520 },
   starterIngredients: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginVertical: spacing.lg },
@@ -221,18 +232,23 @@ const styles = StyleSheet.create({
   ingredientGrid: { gap: spacing.sm },
   ingredientCard: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, paddingHorizontal: spacing.md },
   ingredientCardSelected: { borderColor: 'rgba(169,214,141,0.34)', backgroundColor: '#172019' },
+  ingredientCardOutOfStock: { borderColor: colors.divider, backgroundColor: colors.inkRaised, opacity: 0.88 },
   pressed: { opacity: 0.72 },
   ingredientInitial: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
   ingredientInitialSelected: { backgroundColor: colors.readyDeep },
+  ingredientInitialOutOfStock: { backgroundColor: colors.surfaceSoft },
   ingredientInitialText: { color: colors.brass, fontFamily: fonts.display, fontSize: 18 },
   ingredientInitialTextSelected: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 14 },
+  ingredientInitialTextOutOfStock: { color: colors.paperDim },
   ingredientCopy: { flex: 1 },
   ingredientName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 14 },
   ingredientCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   addGlyph: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 18 },
-  addGlyphSelected: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 10 },
+  addGlyphSelected: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 11 },
+  restockGlyph: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   sectionIntro: { marginTop: spacing.huge },
   sectionTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 29, marginTop: 4 },
+  sectionBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, marginTop: spacing.sm, maxWidth: 560 },
   staples: { gap: spacing.md, marginTop: spacing.lg },
   stapleCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg, gap: spacing.lg },
   stapleHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -242,7 +258,7 @@ const styles = StyleSheet.create({
   stapleTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 14 },
   stapleBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   segmented: { flexDirection: 'row', backgroundColor: colors.inkRaised, borderRadius: radius.pill, padding: 3 },
-  segment: { flex: 1, minHeight: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, minHeight: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   segmentSelected: { backgroundColor: colors.surfaceSoft },
   segmentText: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11 },
   segmentTextSelected: { color: colors.paper, fontFamily: fonts.bodyMedium },
@@ -253,5 +269,6 @@ const styles = StyleSheet.create({
   previewTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 14 },
   previewBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
   previewSpark: { color: colors.brass, fontFamily: fonts.body, fontSize: 18 },
-  skipNote: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, textAlign: 'center', marginTop: spacing.md },
+  skipNote: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: spacing.md },
+  iceRequiredNote: { color: colors.brass },
 });

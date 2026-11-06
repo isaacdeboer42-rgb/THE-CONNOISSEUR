@@ -3,6 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Button, ConnoisseurMark, DisplayText, LoadingState, Screen, ScreenScroll } from '@/components/ui';
+import { iceChoicesConfirmed } from '@/domain/onboarding';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
@@ -33,6 +34,8 @@ export default function WelcomeScreen() {
   if (hydration === 'loading') return <LoadingState />;
 
   const wide = width >= 800;
+  const iceConfirmed = iceChoicesConfirmed(snapshot.basics);
+  const readyForTonight = snapshot.hasOnboarded && iceConfirmed;
 
   return (
     <Screen>
@@ -56,13 +59,13 @@ export default function WelcomeScreen() {
             </Text>
 
             <View style={styles.actions}>
-              {snapshot.hasOnboarded ? (
+              {readyForTonight ? (
                 <Button label="Return to tonight" onPress={() => router.replace('/(tabs)/tonight')} />
               ) : (
                 <Button
-                  label="Build my bar"
+                  label={snapshot.hasOnboarded ? 'Confirm ice to continue' : 'Build my bar'}
                   onPress={() => {
-                    activateGuest();
+                    if (mode === 'sample') activateGuest();
                     router.push('/setup');
                   }}
                 />
@@ -131,7 +134,7 @@ const styles = StyleSheet.create({
   heroWide: { minHeight: 540, flexDirection: 'row', alignItems: 'center', gap: spacing.xxxl },
   heroCopy: { zIndex: 2, paddingTop: spacing.xxl },
   heroCopyWide: { flex: 1, paddingTop: 0 },
-  kicker: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 2, marginBottom: spacing.lg },
+  kicker: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 2, marginBottom: spacing.lg },
   title: { maxWidth: 620, fontSize: 50, lineHeight: 55 },
   titleAccent: { color: colors.brass, fontStyle: 'italic' },
   body: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 16, lineHeight: 25, maxWidth: 540, marginTop: spacing.xl },
@@ -155,6 +158,6 @@ const styles = StyleSheet.create({
   promiseItem: { minWidth: 180, flex: 1, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   promiseNumber: { color: colors.brass, fontFamily: fonts.display, fontSize: 18 },
   promiseTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 12 },
-  promiseBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, marginTop: 3 },
+  promiseBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   promiseDivider: { width: 1, minHeight: 42, backgroundColor: colors.divider },
 });

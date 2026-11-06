@@ -10,8 +10,9 @@ import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export default function MyBarScreen() {
   const router = useRouter();
-  const { snapshot, mode, removeIngredient } = useBar();
+  const { snapshot, mode, removeIngredient, setInventoryStatus } = useBar();
   const onHand = snapshot.inventory.filter((item) => item.status === 'onHand');
+  const outOfStock = snapshot.inventory.filter((item) => item.status === 'outOfStock');
   const iceBasics: Array<{ id: BasicId; label: string; glyph: string; description: string }> = [
     {
       id: 'standard-ice',
@@ -52,7 +53,7 @@ export default function MyBarScreen() {
           </View>
         ) : null}
 
-        {onHand.length === 0 ? (
+        {snapshot.inventory.length === 0 ? (
           <EmptyState
             glyph="▥"
             title="An empty shelf is still a starting point"
@@ -67,6 +68,10 @@ export default function MyBarScreen() {
                 <Text style={styles.summaryLabel}>On hand</Text>
               </View>
               <View style={styles.summaryCard}>
+                <Text style={styles.summaryValue}>{outOfStock.length}</Text>
+                <Text style={styles.summaryLabel}>Out of stock</Text>
+              </View>
+              <View style={styles.summaryCard}>
                 <Text style={styles.summaryValue}>{availableIceCount} / 2</Text>
                 <Text style={styles.summaryLabel}>Ice formats on hand</Text>
               </View>
@@ -74,24 +79,44 @@ export default function MyBarScreen() {
 
             <View style={styles.section}>
               <SectionHeading eyebrow="Ingredients view" title="What your bottles supply" />
+              {onHand.length === 0 ? (
+                <Text style={styles.stockNotice}>Nothing is currently on hand. Restock an ingredient below to bring matching recipes back.</Text>
+              ) : null}
               <View style={styles.list}>
-                {onHand.map((item) => {
+                {snapshot.inventory.map((item) => {
                   const ingredient = ingredientById[item.ingredientId];
+                  const isOutOfStock = item.status === 'outOfStock';
                   return (
-                    <View key={item.id} style={styles.row}>
-                      <View style={styles.initial}><Text style={styles.initialText}>{ingredient.shortName.charAt(0)}</Text></View>
+                    <View key={item.id} style={[styles.row, isOutOfStock && styles.rowOutOfStock]}>
+                      <View style={[styles.initial, isOutOfStock && styles.initialOutOfStock]}>
+                        <Text style={[styles.initialText, isOutOfStock && styles.initialTextOutOfStock]}>{ingredient.shortName.charAt(0)}</Text>
+                      </View>
                       <View style={styles.rowCopy}>
                         <Text style={styles.rowName}>{ingredient.name}</Text>
-                        <Text style={styles.rowCategory}>{ingredient.category} · Generic ingredient</Text>
+                        <Text style={styles.rowCategory}>
+                          {ingredient.category} · {isOutOfStock ? 'Out of stock' : 'On hand'}
+                        </Text>
                       </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${ingredient.name}`}
-                        onPress={() => removeIngredient(item.ingredientId)}
-                        hitSlop={10}
-                      >
-                        <Text style={styles.remove}>Remove</Text>
-                      </Pressable>
+                      <View style={styles.rowActions}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={isOutOfStock ? `Restock ${ingredient.name}` : `Mark ${ingredient.name} out of stock`}
+                          onPress={() => setInventoryStatus(item.ingredientId, isOutOfStock ? 'onHand' : 'outOfStock')}
+                          style={[styles.stockButton, isOutOfStock && styles.restockButton]}
+                        >
+                          <Text style={[styles.stockButtonText, isOutOfStock && styles.restockButtonText]}>
+                            {isOutOfStock ? 'Restock' : 'Mark empty'}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${ingredient.name}`}
+                          onPress={() => removeIngredient(item.ingredientId)}
+                          style={styles.removeButton}
+                        >
+                          <Text style={styles.remove}>Remove</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   );
                 })}
@@ -127,29 +152,39 @@ export default function MyBarScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.md, marginBottom: spacing.xxl },
   title: { color: colors.paper, fontFamily: fonts.display, fontSize: 38, marginTop: 3 },
-  addButton: { minHeight: 42, paddingHorizontal: spacing.lg },
+  addButton: { minHeight: 44, paddingHorizontal: spacing.lg },
   utilityRow: { flexDirection: 'row', gap: spacing.sm, marginTop: -spacing.md, marginBottom: spacing.xl },
-  utilityButton: { flex: 1, minHeight: 42, paddingHorizontal: spacing.sm },
+  utilityButton: { flex: 1, minHeight: 44, paddingHorizontal: spacing.sm },
   demoNote: { padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.brassSoft, borderWidth: 1, borderColor: 'rgba(215,170,98,0.22)', marginBottom: spacing.lg },
   demoNoteTitle: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 12 },
   demoNoteBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
-  summaryRow: { flexDirection: 'row', gap: spacing.md },
-  summaryCard: { flex: 1, minHeight: 110, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg, justifyContent: 'flex-end' },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  summaryCard: { flexGrow: 1, flexBasis: 150, minHeight: 110, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg, justifyContent: 'flex-end' },
   summaryValue: { color: colors.paper, fontFamily: fonts.display, fontSize: 34 },
   summaryLabel: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
   section: { marginTop: spacing.huge, gap: spacing.lg },
+  stockNotice: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   list: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
-  row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  row: { minHeight: 88, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider, paddingVertical: spacing.sm },
+  rowOutOfStock: { opacity: 0.82 },
   initial: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brassSoft, alignItems: 'center', justifyContent: 'center' },
+  initialOutOfStock: { backgroundColor: colors.surfaceSoft },
   initialText: { color: colors.brass, fontFamily: fonts.display, fontSize: 18 },
+  initialTextOutOfStock: { color: colors.paperDim },
   rowCopy: { flex: 1 },
   rowName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
-  rowCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, marginTop: 4 },
-  remove: { color: colors.alert, fontFamily: fonts.bodyMedium, fontSize: 10 },
+  rowCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  rowActions: { alignItems: 'stretch', gap: 4 },
+  stockButton: { minHeight: 44, minWidth: 88, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
+  restockButton: { borderColor: 'rgba(169,214,141,0.4)', backgroundColor: colors.readyDeep },
+  stockButtonText: { color: colors.paperMuted, fontFamily: fonts.bodyMedium, fontSize: 11 },
+  restockButtonText: { color: colors.ready },
+  removeButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  remove: { color: colors.alert, fontFamily: fonts.bodyMedium, fontSize: 11 },
   stapleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   stapleCard: { flex: 1, minHeight: 118, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   stapleGlyph: { color: colors.brass, fontFamily: fonts.body, fontSize: 20 },
   stapleName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13, marginTop: spacing.md },
-  stapleDescription: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, lineHeight: 15, marginTop: 4 },
-  stapleValue: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, textTransform: 'capitalize', marginTop: 4 },
+  stapleDescription: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  stapleValue: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, textTransform: 'capitalize', marginTop: 4 },
 });

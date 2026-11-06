@@ -66,7 +66,7 @@ export default function MakeModeScreen() {
           <Text style={styles.completionBody}>Your bar has not been depleted. If anything ran out, you can mark it later from My Bar.</Text>
           <View style={styles.feedbackCard}>
             <Text style={styles.feedbackTitle}>How was it?</Text>
-            <Text style={styles.feedbackBody}>Private feedback helps keep your future choices relevant.</Text>
+            <Text style={styles.feedbackBody}>Private feedback is stored with this session for your own history.</Text>
             <View style={styles.feedbackButtons}>
               <Pressable
                 accessibilityRole="button"
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   feedbackButtonTextActive: { color: colors.brass },
   preflightScroll: { paddingBottom: spacing.huge },
   makeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, marginBottom: spacing.xxxl },
-  savedLabel: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.3 },
+  savedLabel: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.3 },
   headerSpacer: { width: 44 },
   preflightTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 42, lineHeight: 48, marginTop: spacing.sm },
   preflightBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, marginTop: spacing.md },
@@ -243,11 +243,11 @@ const styles = StyleSheet.create({
   equipmentItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   equipmentGlyph: { color: colors.brass, fontFamily: fonts.body, fontSize: 13 },
   equipmentText: { color: colors.paper, fontFamily: fonts.body, fontSize: 13 },
-  savedHint: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, textAlign: 'center', marginTop: spacing.md },
+  savedHint: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, textAlign: 'center', marginTop: spacing.md },
   stepScreen: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: spacing.xl },
   stepTopBar: { flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.lg },
   progressCopy: { flex: 1, alignItems: 'center' },
-  stepOf: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.3 },
+  stepOf: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.3 },
   recipeName: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   servings: { width: 44, color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, textAlign: 'right' },
   progressTrack: { height: 2, backgroundColor: colors.surfaceSoft },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   tipText: { flex: 1, color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   timerCard: { maxWidth: 610, minHeight: 100, marginTop: spacing.xxl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(215,170,98,0.25)', backgroundColor: colors.surfaceWarm, padding: spacing.lg },
   timerCardComplete: { borderColor: 'rgba(169,214,141,0.3)', backgroundColor: colors.readyDeep },
-  timerLabel: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.3 },
+  timerLabel: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.3 },
   timerValue: { color: colors.paper, fontFamily: fonts.display, fontSize: 33, marginTop: 2 },
   timerButton: { minWidth: 92, minHeight: 44 },
   stepFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.lg },

@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   preparation: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 15, marginTop: 2 },
   value: { alignItems: 'flex-end' },
   amount: { color: colors.paper, fontFamily: fonts.body, fontSize: 13 },
-  label: { fontFamily: fonts.body, fontSize: 10, marginTop: 3 },
+  label: { fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   label_onHand: { color: colors.ready },
   label_missing: { color: colors.alert },
   label_optional: { color: colors.paperDim },

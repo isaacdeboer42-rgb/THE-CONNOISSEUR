@@ -30,21 +30,21 @@ export default function AccountScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <Eyebrow>{accountProfile ? 'Your bar, remembered' : 'Optional account'}</Eyebrow>
+        <Eyebrow>{accountProfile ? 'Local preview active' : 'Optional local preview'}</Eyebrow>
         <Text accessibilityRole="header" style={styles.title}>
-          {accountProfile ? 'Your bar has a home.' : 'Keep the guest experience. Add backup later.'}
+          {accountProfile ? 'Your preview bar is ready.' : 'Test migration without leaving this device.'}
         </Text>
         <Text style={styles.subtitle}>
           {accountProfile
             ? 'Your account copy and original guest bar are stored separately on this device.'
-            : 'Create an account only when backup and device synchronisation are useful to you.'}
+            : 'Create a local preview to test guest-data migration. It does not provide authentication, backup or synchronisation.'}
         </Text>
 
         <View style={styles.previewNotice}>
           <Text style={styles.previewGlyph}>i</Text>
           <View style={styles.previewCopy}>
             <Text style={styles.previewTitle}>Local account preview</Text>
-            <Text style={styles.previewBody}>Supabase is not configured in this build. Account screens and idempotent guest migration are testable, but no credentials or data leave this device.</Text>
+            <Text style={styles.previewBody}>Supabase is not configured in this build. Account screens and idempotent guest migration are testable, but no password is requested and no data leaves this device.</Text>
           </View>
         </View>
 
@@ -56,7 +56,7 @@ export default function AccountScreen() {
                 <Text style={styles.email}>{accountProfile.email}</Text>
                 <Text style={styles.accountMeta}>Preview account · Created {new Date(accountProfile.createdAt).toLocaleDateString()}</Text>
               </View>
-              <InlinePill label="Signed in" tone="ready" />
+              <InlinePill label="Preview active" tone="ready" />
             </View>
 
             <View style={styles.importCard}>
@@ -84,14 +84,14 @@ export default function AccountScreen() {
             <View style={styles.actions}>
               <Button label="Edit taste profile" variant="secondary" onPress={() => router.push('/preferences')} />
               <Button label="Open shopping" variant="secondary" onPress={() => router.push('/shopping')} />
-              <Button label="Sign out" variant="ghost" onPress={signOut} />
+              <Button label="Exit preview" variant="ghost" onPress={signOut} />
             </View>
           </>
         ) : (
           <View style={styles.actions}>
             <Button label="Create preview account" onPress={() => router.push('/account/register')} />
-            <Button label="Sign in" variant="secondary" onPress={() => router.push('/account/sign-in')} />
-            <Button label="Recover access" variant="ghost" onPress={() => router.push('/account/recovery')} />
+            <Button label="Open preview account" variant="secondary" onPress={() => router.push('/account/sign-in')} />
+            <Button label="Check preview recovery" variant="ghost" onPress={() => router.push('/account/recovery')} />
           </View>
         )}
 
@@ -108,7 +108,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   scrollContent: { paddingBottom: spacing.huge },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, marginBottom: spacing.xxxl },
-  topLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.4 },
+  topLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.4 },
   headerSpacer: { width: 44 },
   title: { color: colors.paper, fontFamily: fonts.display, fontSize: 43, lineHeight: 49, marginTop: spacing.sm, maxWidth: 650 },
   subtitle: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 15, lineHeight: 23, maxWidth: 590, marginTop: spacing.md },
@@ -116,13 +116,13 @@ const styles = StyleSheet.create({
   previewGlyph: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.brass, color: colors.ink, textAlign: 'center', lineHeight: 24, fontFamily: fonts.bodyMedium, fontSize: 12 },
   previewCopy: { flex: 1 },
   previewTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 12 },
-  previewBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 10, lineHeight: 16, marginTop: 4 },
+  previewBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17, marginTop: 4 },
   accountCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xxxl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surfaceWarm, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: colors.brass, fontFamily: fonts.display, fontSize: 23 },
   accountCopy: { flex: 1 },
   email: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
-  accountMeta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 9, marginTop: 4 },
+  accountMeta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
   importCard: { gap: spacing.md, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   importHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   importTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 21 },
@@ -131,5 +131,5 @@ const styles = StyleSheet.create({
   actions: { gap: spacing.sm, marginTop: spacing.xxxl },
   dataSection: { gap: spacing.md, marginTop: spacing.huge, paddingTop: spacing.xl, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   dataTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 20 },
-  dataBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, lineHeight: 16 },
+  dataBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
 });

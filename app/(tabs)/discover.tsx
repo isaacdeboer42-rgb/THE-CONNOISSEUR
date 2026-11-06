@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
   searchWrap: { marginTop: spacing.xxl, minHeight: 52, flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, paddingHorizontal: spacing.lg, gap: spacing.md },
   searchGlyph: { color: colors.brass, fontFamily: fonts.body, fontSize: 20 },
   search: { flex: 1, color: colors.paper, fontFamily: fonts.body, fontSize: 14 },
-  resultCount: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing.xl, marginBottom: spacing.md },
+  resultCount: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing.xl, marginBottom: spacing.md },
   list: { gap: spacing.md },
 });

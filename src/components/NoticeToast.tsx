@@ -5,7 +5,7 @@ import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export function NoticeToast() {
-  const { notice, undo, clearNotice } = useBar();
+  const { notice, undoExpiresAt, undo, expireUndo, clearNotice } = useBar();
 
   useEffect(() => {
     if (!notice) return;
@@ -13,7 +13,14 @@ export function NoticeToast() {
     return () => clearTimeout(timer);
   }, [clearNotice, notice]);
 
-  if (!notice) return null;
+  useEffect(() => {
+    if (!undoExpiresAt) return;
+    const remaining = Math.max(0, undoExpiresAt - Date.now());
+    const timer = setTimeout(expireUndo, remaining);
+    return () => clearTimeout(timer);
+  }, [expireUndo, undoExpiresAt]);
+
+  if (!notice && !undoExpiresAt) return null;
 
   return (
     <View
@@ -27,9 +34,9 @@ export function NoticeToast() {
           <Text style={styles.checkText}>✓</Text>
         </View>
         <Text style={styles.message} numberOfLines={2}>
-          {notice.message}
+          {notice?.message ?? 'Recent bar change'}
         </Text>
-        {notice.canUndo ? (
+        {undoExpiresAt ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Undo last change" onPress={undo} hitSlop={8}>
             <Text style={styles.undo}>Undo</Text>
           </Pressable>

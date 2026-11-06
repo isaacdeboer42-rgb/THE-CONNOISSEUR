@@ -45,6 +45,6 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   bar: { height: 76, paddingTop: 7, paddingBottom: 9, backgroundColor: '#101412', borderTopWidth: 1, borderTopColor: colors.divider },
   item: { minHeight: 58 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 10, marginTop: 1 },
+  label: { fontFamily: fonts.bodyMedium, fontSize: 11, marginTop: 1 },
   glyph: { fontFamily: fonts.body, fontSize: 20, lineHeight: 23 },
 });

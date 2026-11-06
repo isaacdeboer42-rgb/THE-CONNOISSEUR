@@ -11,6 +11,7 @@ import React, {
 
 import { ingredientById, recipeById, recipes } from '@/data/catalog';
 import { getRecommendations } from '@/domain/matching';
+import { SAMPLE_INGREDIENT_IDS, STARTER_INGREDIENT_IDS } from '@/domain/onboarding';
 import {
   createEmptySnapshot,
   LocalAccountRecord,
@@ -27,6 +28,7 @@ import {
   FlavourDimension,
   GuestImportState,
   IngredientId,
+  InventoryItem,
   MakeSession,
   MatchResult,
   PurchaseSuggestion,
@@ -56,13 +58,19 @@ interface AppState {
   signedIn: boolean;
   importState: GuestImportState;
   notice?: Notice;
-  undo?: { mode: BarMode; snapshot: BarSnapshot };
+  undo?: { mode: BarMode; snapshot: BarSnapshot; expiresAt: number };
 }
 
 type SnapshotAction =
   | { type: 'addIngredient'; ingredientId: IngredientId; addedAt: string }
   | { type: 'addStarter'; addedAt: string }
   | { type: 'removeIngredient'; ingredientId: IngredientId }
+  | {
+      type: 'setInventoryStatus';
+      ingredientId: IngredientId;
+      status: InventoryItem['status'];
+      updatedAt: string;
+    }
   | { type: 'setBasic'; basicId: BasicId; value: StapleState }
   | { type: 'setOnboarded'; value: boolean }
   | { type: 'toggleSaved'; recipeId: RecipeId; timestamp: string }
@@ -91,6 +99,7 @@ type Action =
   | { type: 'completeImport'; snapshot: BarSnapshot; importState: GuestImportState }
   | { type: 'failImport'; importState: GuestImportState }
   | { type: 'undo' }
+  | { type: 'expireUndo' }
   | { type: 'clearNotice' };
 
 function makeInventoryItem(ingredientId: IngredientId, addedAt: string) {
@@ -108,9 +117,7 @@ function sampleSnapshot(): BarSnapshot {
   const addedAt = '2026-01-01T00:00:00.000Z';
   return {
     ...createEmptySnapshot(),
-    inventory: ['bourbon', 'simple-syrup', 'egg-white', 'lemon-juice'].map((ingredientId) =>
-      makeInventoryItem(ingredientId as IngredientId, addedAt),
-    ),
+    inventory: SAMPLE_INGREDIENT_IDS.map((ingredientId) => makeInventoryItem(ingredientId, addedAt)),
     basics: { 'standard-ice': 'available', 'large-ice': 'available' },
     tastePreferences: {
       sour: { intensity: 0.75, importance: 0.7 },
@@ -159,8 +166,7 @@ function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnaps
       };
     }
     case 'addStarter': {
-      const starter: IngredientId[] = ['bourbon', 'simple-syrup', 'egg-white'];
-      return starter.reduce(
+      return STARTER_INGREDIENT_IDS.reduce(
         (next, ingredientId) =>
           mutateSnapshot(next, {
             type: 'addIngredient',
@@ -176,6 +182,23 @@ function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnaps
         inventory: snapshot.inventory.filter((item) => item.ingredientId !== action.ingredientId),
         shoppingItems: snapshot.shoppingItems.map((item) =>
           item.ingredientId === action.ingredientId ? { ...item, ownedAt: undefined } : item,
+        ),
+      };
+    case 'setInventoryStatus':
+      return {
+        ...snapshot,
+        inventory: snapshot.inventory.map((item) =>
+          item.ingredientId === action.ingredientId
+            ? { ...item, status: action.status, revision: item.revision + 1 }
+            : item,
+        ),
+        shoppingItems: snapshot.shoppingItems.map((item) =>
+          item.ingredientId === action.ingredientId
+            ? {
+                ...item,
+                ownedAt: action.status === 'onHand' ? action.updatedAt : undefined,
+              }
+            : item,
         ),
       };
     case 'setBasic':
@@ -232,6 +255,7 @@ function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnaps
       return {
         ...snapshot,
         sessionPreferences: {
+          ...snapshot.sessionPreferences,
           tastes: {},
           excludedIngredientIds: [],
         },
@@ -315,7 +339,9 @@ function reducer(state: AppState, action: Action): AppState {
               canUndo: Boolean(action.undoable),
             }
           : state.notice,
-        undo: action.undoable ? { mode: action.mode, snapshot: before } : undefined,
+        undo: action.undoable
+          ? { mode: action.mode, snapshot: before, expiresAt: Date.now() + 30_000 }
+          : undefined,
       };
     }
     case 'register':
@@ -325,6 +351,7 @@ function reducer(state: AppState, action: Action): AppState {
         signedIn: true,
         mode: 'account',
         importState: action.importState,
+        undo: undefined,
         notice: {
           id: `${Date.now()}-account`,
           message: 'Guest bar safely copied into your preview account',
@@ -332,15 +359,16 @@ function reducer(state: AppState, action: Action): AppState {
         },
       };
     case 'signIn':
-      return { ...state, signedIn: true, mode: 'account' };
+      return { ...state, signedIn: true, mode: 'account', undo: undefined };
     case 'signOut':
       return {
         ...state,
         signedIn: false,
         mode: 'guest',
+        undo: undefined,
         notice: {
           id: `${Date.now()}-signout`,
-          message: 'Signed out; your separate guest bar is still here',
+          message: 'Preview closed; your separate guest bar is still here',
           canUndo: false,
         },
       };
@@ -350,12 +378,14 @@ function reducer(state: AppState, action: Action): AppState {
             ...state,
             account: { ...state.account, snapshot: action.snapshot },
             importState: action.importState,
+            undo: undefined,
           }
         : state;
     case 'failImport':
-      return { ...state, importState: action.importState };
+      return { ...state, importState: action.importState, undo: undefined };
     case 'undo': {
       if (!state.undo) return state;
+      if (state.undo.expiresAt <= Date.now()) return { ...state, undo: undefined };
       const updated = withSnapshot(state, state.undo.mode, state.undo.snapshot);
       return {
         ...updated,
@@ -363,8 +393,10 @@ function reducer(state: AppState, action: Action): AppState {
         notice: { id: `${Date.now()}-undo`, message: 'Change undone', canUndo: false },
       };
     }
+    case 'expireUndo':
+      return { ...state, undo: undefined };
     case 'clearNotice':
-      return { ...state, notice: undefined, undo: undefined };
+      return { ...state, notice: undefined };
   }
 }
 
@@ -383,11 +415,13 @@ interface BarContextValue {
   accountProfile?: AccountProfile;
   importState: GuestImportState;
   notice?: Notice;
+  undoExpiresAt?: number;
   activateGuest: () => void;
   activateSample: () => void;
   addIngredient: (ingredientId: IngredientId) => void;
   addStarter: () => void;
   removeIngredient: (ingredientId: IngredientId) => void;
+  setInventoryStatus: (ingredientId: IngredientId, status: InventoryItem['status']) => void;
   setBasic: (basicId: BasicId, value: StapleState) => void;
   completeOnboarding: () => void;
   toggleSaved: (recipeId: RecipeId) => void;
@@ -399,12 +433,13 @@ interface BarContextValue {
   chooseQuickRecipe: (allowOneAway?: boolean) => MatchResult | undefined;
   startMakeSession: (recipeId: RecipeId, servings: number) => string;
   updateMakeSession: (sessionId: string, patch: Partial<MakeSession>) => void;
-  registerAccount: (email: string, password: string) => Promise<AccountActionResult>;
-  signIn: (email: string, password: string) => Promise<AccountActionResult>;
+  registerAccount: (email: string) => Promise<AccountActionResult>;
+  signIn: (email: string) => Promise<AccountActionResult>;
   recoverAccount: (email: string) => Promise<AccountActionResult>;
   signOut: () => void;
   retryGuestImport: () => Promise<void>;
   undo: () => void;
+  expireUndo: () => void;
   clearNotice: () => void;
   resetGuest: () => void;
 }
@@ -517,6 +552,7 @@ export function BarProvider({ children }: PropsWithChildren) {
       accountProfile: state.signedIn ? state.account?.profile : undefined,
       importState: state.importState,
       notice: state.notice,
+      undoExpiresAt: state.undo?.expiresAt,
       activateGuest: () => dispatch({ type: 'setMode', mode: 'guest' }),
       activateSample: () => dispatch({ type: 'setMode', mode: 'sample' }),
       addIngredient: (ingredientId) =>
@@ -533,6 +569,19 @@ export function BarProvider({ children }: PropsWithChildren) {
         ),
       removeIngredient: (ingredientId) =>
         mutate({ type: 'removeIngredient', ingredientId }, 'Ingredient removed', true),
+      setInventoryStatus: (ingredientId, status) =>
+        mutate(
+          {
+            type: 'setInventoryStatus',
+            ingredientId,
+            status,
+            updatedAt: new Date().toISOString(),
+          },
+          status === 'onHand'
+            ? `${ingredientById[ingredientId].shortName} is back on hand`
+            : `${ingredientById[ingredientId].shortName} marked out of stock`,
+          true,
+        ),
       setBasic: (basicId, basicState) =>
         mutate(
           { type: 'setBasic', basicId, value: basicState },
@@ -596,10 +645,9 @@ export function BarProvider({ children }: PropsWithChildren) {
           sessionId,
           patch: { ...patch, updatedAt: new Date().toISOString() },
         }),
-      registerAccount: async (email, password) => {
+      registerAccount: async (email) => {
         const normalizedEmail = email.trim().toLowerCase();
         if (!validEmail(normalizedEmail)) return { ok: false, error: 'Enter a valid email address.' };
-        if (password.length < 8) return { ok: false, error: 'Use at least 8 characters for the password.' };
         const timestamp = new Date().toISOString();
         const samePreviewAccount = state.account?.profile.email === normalizedEmail;
         const profile: AccountProfile = samePreviewAccount
@@ -628,10 +676,10 @@ export function BarProvider({ children }: PropsWithChildren) {
         });
         return { ok: true };
       },
-      signIn: async (email, password) => {
+      signIn: async (email) => {
         const normalizedEmail = email.trim().toLowerCase();
-        if (!validEmail(normalizedEmail) || password.length < 8) {
-          return { ok: false, error: 'Check your email and password.' };
+        if (!validEmail(normalizedEmail)) {
+          return { ok: false, error: 'Enter a valid email address.' };
         }
         if (!state.account || state.account.profile.email !== normalizedEmail) {
           return { ok: false, error: 'No local preview account matches that email.' };
@@ -640,12 +688,17 @@ export function BarProvider({ children }: PropsWithChildren) {
         return { ok: true };
       },
       recoverAccount: async (email) => {
-        if (!validEmail(email)) return { ok: false, error: 'Enter a valid email address.' };
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!validEmail(normalizedEmail)) return { ok: false, error: 'Enter a valid email address.' };
+        if (!state.account || state.account.profile.email !== normalizedEmail) {
+          return { ok: false, error: 'No local preview account matches that email.' };
+        }
         return { ok: true };
       },
       signOut: () => dispatch({ type: 'signOut' }),
       retryGuestImport,
       undo: () => dispatch({ type: 'undo' }),
+      expireUndo: () => dispatch({ type: 'expireUndo' }),
       clearNotice: () => dispatch({ type: 'clearNotice' }),
       resetGuest: () =>
         dispatch({ type: 'mutate', mode: 'guest', operation: { type: 'reset' } }),
@@ -664,6 +717,7 @@ export function BarProvider({ children }: PropsWithChildren) {
       state.mode,
       state.notice,
       state.signedIn,
+      state.undo,
     ],
   );
 

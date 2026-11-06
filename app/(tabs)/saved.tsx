@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   savedAt: {
     color: colors.paperDim,
     fontFamily: fonts.bodyMedium,
-    fontSize: 9,
+    fontSize: 11,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: spacing.sm,

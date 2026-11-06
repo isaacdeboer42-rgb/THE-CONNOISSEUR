@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipeCard } from '@/components/RecipeCard';
 import { Button, ConnoisseurMark, EmptyState, Eyebrow, IconButton, Screen, ScreenScroll, SectionHeading } from '@/components/ui';
 import { ingredientById, ingredients } from '@/data/catalog';
+import { iceChoicesConfirmed } from '@/domain/onboarding';
 import { IngredientId, MatchResult } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -145,6 +146,7 @@ export default function TonightScreen() {
     snapshot,
     recommendations,
     addIngredient,
+    setBasic,
     chooseQuickRecipe,
     setSessionPreference,
     clearSessionPreferences,
@@ -158,6 +160,22 @@ export default function TonightScreen() {
   const nearly = recommendations.filter((match) => match.category === 'oneAway');
   const explore = recommendations.filter((match) => match.category === 'moreToExplore');
   const firstMatch = ready[0] ?? nearly[0] ?? explore[0];
+  const iceConfirmed = iceChoicesConfirmed(snapshot.basics);
+
+  if (!iceConfirmed) {
+    return (
+      <Screen>
+        <ScreenScroll>
+          <EmptyState
+            glyph="◇"
+            title="Confirm both ice types first"
+            body="Standard ice and large serving ice affect different recipes. Tell us whether each is available so Tonight can rank accurately."
+            action={<Button label="Confirm ice" onPress={() => router.push('/setup')} />}
+          />
+        </ScreenScroll>
+      </Screen>
+    );
+  }
 
   const preferenceOptions = [
     { dimension: 'sour' as const, label: 'Bright & sour', value: { intensity: 0.82, importance: 0.85 } },
@@ -169,6 +187,15 @@ export default function TonightScreen() {
     const selected = chooseQuickRecipe(allowOneAway);
     setQuickEmpty(!selected);
     setQuickPick(selected);
+  };
+
+  const quickAddIngredient = (ingredientId: IngredientId) => {
+    if (ingredientId === 'standard-ice' || ingredientId === 'large-ice') {
+      setBasic(ingredientId, 'available');
+      return;
+    }
+
+    addIngredient(ingredientId);
   };
 
   return (
@@ -259,10 +286,10 @@ export default function TonightScreen() {
         {mode === 'guest' && inventoryCount > 0 ? (
           <View style={styles.accountBanner}>
             <View style={styles.accountBannerCopy}>
-              <Text style={styles.accountBannerTitle}>Keep this bar beyond one device</Text>
-              <Text style={styles.accountBannerBody}>Create an account after you have explored your recommendations. Your guest data stays intact until the import is confirmed.</Text>
+              <Text style={styles.accountBannerTitle}>Try the account flow locally</Text>
+              <Text style={styles.accountBannerBody}>Create a local preview after exploring. It safely copies your guest data on this device so migration can be tested without implying backup or sync.</Text>
             </View>
-            <Button label="Back up my bar" variant="secondary" onPress={() => router.push('/account/register')} />
+            <Button label="Create local preview" variant="secondary" onPress={() => router.push('/account/register')} />
           </View>
         ) : null}
 
@@ -288,19 +315,19 @@ export default function TonightScreen() {
                 match={firstMatch}
                 featured
                 onPress={() => router.push(`/recipe/${firstMatch.recipe.id}`)}
-                onQuickAdd={(ingredientId) => addIngredient(ingredientId)}
+                onQuickAdd={quickAddIngredient}
               />
             ) : null}
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Choose a cocktail for me"
+              accessibilityLabel="Quick Select a cocktail"
               onPress={() => pickQuick(false)}
               style={({ pressed }) => [styles.quickSelect, pressed && styles.pressed]}
             >
               <View style={styles.quickSelectGlyph}><Text style={styles.quickSelectGlyphText}>✦</Text></View>
               <View style={styles.quickSelectCopy}>
-                <Text style={styles.quickSelectTitle}>Choose for me</Text>
+                <Text style={styles.quickSelectTitle}>Quick Select</Text>
                 <Text style={styles.quickSelectBody}>A thoughtful pick from your current matches</Text>
               </View>
               <Text style={styles.quickSelectArrow}>→</Text>
@@ -315,7 +342,7 @@ export default function TonightScreen() {
                       key={match.recipe.id}
                       match={match}
                       onPress={() => router.push(`/recipe/${match.recipe.id}`)}
-                      onQuickAdd={addIngredient}
+                      onQuickAdd={quickAddIngredient}
                     />
                   ))}
                 </View>
@@ -327,7 +354,7 @@ export default function TonightScreen() {
                 <SectionHeading eyebrow="One ingredient away" title="Worth a small addition" />
                 <View style={styles.cardList}>
                   {nearly.slice(1).map((match) => (
-                    <RecipeCard key={match.recipe.id} match={match} onPress={() => router.push(`/recipe/${match.recipe.id}`)} onQuickAdd={addIngredient} />
+                    <RecipeCard key={match.recipe.id} match={match} onPress={() => router.push(`/recipe/${match.recipe.id}`)} onQuickAdd={quickAddIngredient} />
                   ))}
                 </View>
               </View>
@@ -373,7 +400,7 @@ const styles = StyleSheet.create({
   sampleGlyph: { color: colors.brass, fontFamily: fonts.body, fontSize: 18 },
   sampleCopy: { flex: 1 },
   sampleTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 12 },
-  sampleBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+  sampleBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
   sampleAction: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   barSummary: { minHeight: 102, flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg, gap: spacing.lg },
   bottleCluster: { width: 54, height: 58 },
@@ -381,22 +408,22 @@ const styles = StyleSheet.create({
   bottleShort: { position: 'absolute', left: 0, bottom: 0, width: 20, height: 38, borderRadius: 4, borderWidth: 1, borderColor: colors.paperDim, backgroundColor: colors.surfaceSoft },
   bottleRound: { position: 'absolute', right: 0, bottom: 0, width: 23, height: 31, borderRadius: 10, borderWidth: 1, borderColor: colors.alert, backgroundColor: colors.alertDeep },
   barSummaryCopy: { flex: 1 },
-  barLabel: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 8, letterSpacing: 1.4 },
+  barLabel: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.4 },
   barValue: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 14, marginTop: 5 },
-  barMeta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, marginTop: 4 },
-  addButton: { minHeight: 40, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.brassSoft, alignItems: 'center', justifyContent: 'center' },
+  barMeta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  addButton: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.brassSoft, alignItems: 'center', justifyContent: 'center' },
   addButtonText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   preferenceSection: { marginTop: spacing.xl, marginBottom: spacing.xxxl },
   preferenceHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
-  preferenceLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 9, letterSpacing: 1.4 },
-  preferenceNote: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10 },
+  preferenceLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.4 },
+  preferenceNote: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11 },
   chips: { gap: spacing.sm, paddingRight: spacing.xl },
-  preferenceChip: { minHeight: 38, paddingHorizontal: spacing.lg, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  preferenceChip: { minHeight: 44, paddingHorizontal: spacing.lg, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   preferenceChipActive: { borderColor: 'rgba(215,170,98,0.34)', backgroundColor: colors.brassSoft },
   preferenceChipText: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11 },
   preferenceChipTextActive: { color: colors.brass, fontFamily: fonts.bodyMedium },
-  clearChip: { minHeight: 38, paddingHorizontal: spacing.md, justifyContent: 'center' },
-  clearChipText: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 10 },
+  clearChip: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: 'center' },
+  clearChipText: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11 },
   accountBanner: { marginBottom: spacing.xxl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(215,170,98,0.2)', backgroundColor: colors.surfaceWarm, padding: spacing.lg, gap: spacing.lg },
   accountBannerCopy: { gap: 4 },
   accountBannerTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 21 },
@@ -408,7 +435,7 @@ const styles = StyleSheet.create({
   quickSelectGlyphText: { color: colors.ink, fontFamily: fonts.body, fontSize: 17 },
   quickSelectCopy: { flex: 1 },
   quickSelectTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 20 },
-  quickSelectBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, marginTop: 3 },
+  quickSelectBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   quickSelectArrow: { color: colors.brass, fontFamily: fonts.body, fontSize: 21 },
   group: { marginTop: spacing.huge, gap: spacing.lg },
   cardList: { gap: spacing.md },
@@ -427,7 +454,7 @@ const styles = StyleSheet.create({
   resultInitialText: { color: colors.brass, fontFamily: fonts.display, fontSize: 18 },
   resultCopy: { flex: 1 },
   resultName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
-  resultCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, marginTop: 3 },
+  resultCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 3 },
   resultAdd: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   noResults: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 13, textAlign: 'center', paddingVertical: spacing.xxxl },
   quickScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ingredientById } from '@/data/catalog';
 import { categoryLabel } from '@/domain/matching';
 import { IngredientId, MatchResult } from '@/domain/types';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -60,7 +61,7 @@ export function RecipeCard({
         {quickAddId && onQuickAdd ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Add ${quickAddId === 'lemon-juice' ? 'lemon juice' : 'missing ingredient'}`}
+            accessibilityLabel={`Add ${ingredientById[quickAddId].shortName}`}
             onPress={() => onQuickAdd(quickAddId)}
             hitSlop={8}
             style={({ pressed }) => [styles.quickAdd, pressed && styles.pressed]}
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   arrow: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 19 },
   copy: { gap: 6 },
-  eyebrow: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1.15, textTransform: 'uppercase' },
+  eyebrow: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.15, textTransform: 'uppercase' },
   name: { color: colors.paper, fontFamily: fonts.display, fontSize: 29, lineHeight: 34 },
   nameFeatured: { fontSize: 36, lineHeight: 42 },
   description: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21, maxWidth: 520 },
@@ -100,6 +101,6 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', minHeight: 24 },
   meta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 12 },
   metaDot: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 12, marginHorizontal: spacing.sm },
-  quickAdd: { marginLeft: 'auto', minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.brassSoft },
+  quickAdd: { marginLeft: 'auto', minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.brassSoft },
   quickAddText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 12 },
 });
