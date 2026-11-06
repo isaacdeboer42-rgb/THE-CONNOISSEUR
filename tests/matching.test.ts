@@ -133,6 +133,7 @@ describe('serving conversion', () => {
     const ice = recipe.requirements.find((requirement) => requirement.id === 'ws-ice')!;
 
     expect(formatRequirementAmount(bourbon, 2, recipe.baseServings)).toBe('120 ml');
+    expect(formatRequirementAmount(bourbon, 2, recipe.baseServings, 'us')).toBe('4.1 fl oz');
     expect(formatRequirementAmount(ice, 2, recipe.baseServings)).toBe('1 scoop');
   });
 });

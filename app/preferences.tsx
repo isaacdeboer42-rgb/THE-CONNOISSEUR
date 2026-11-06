@@ -66,7 +66,7 @@ function ChoiceRow({
 
 export default function PreferencesScreen() {
   const router = useRouter();
-  const { snapshot, setPersistentPreference } = useBar();
+  const { snapshot, setPersistentPreference, setMeasurementSystem } = useBar();
   const dimensions = Object.keys(preferenceMeta) as TasteDimension[];
   const configuredCount = dimensions.filter((dimension) => Boolean(snapshot.tastePreferences[dimension])).length;
 
@@ -90,6 +90,32 @@ export default function PreferencesScreen() {
           <View style={styles.summaryCopy}>
             <Text style={styles.summaryTitle}>{configuredCount === 1 ? 'preference set' : 'preferences set'}</Text>
             <Text style={styles.summaryBody}>You can leave every dimension neutral and still receive availability-first recommendations.</Text>
+          </View>
+        </View>
+
+        <View style={styles.unitsCard}>
+          <View style={styles.unitsCopy}>
+            <Text style={styles.summaryTitle}>Measurements</Text>
+            <Text style={styles.summaryBody}>Millilitres are the Australian default. Change once and recipe quantities follow.</Text>
+          </View>
+          <View style={styles.unitChoices} accessibilityRole="radiogroup" accessibilityLabel="Measurement preference">
+            {([
+              { label: 'ml', value: 'metric' },
+              { label: 'fl oz', value: 'us' },
+            ] as const).map((option) => {
+              const active = snapshot.measurementSystem === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setMeasurementSystem(option.value)}
+                  style={[styles.unitChoice, active && styles.segmentActive]}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -171,6 +197,10 @@ const styles = StyleSheet.create({
   summaryCopy: { flex: 1 },
   summaryTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
   summaryBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 17, marginTop: 4 },
+  unitsCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
+  unitsCopy: { flex: 1, minWidth: 210 },
+  unitChoices: { flexDirection: 'row', padding: 3, borderRadius: radius.pill, backgroundColor: colors.inkRaised, borderWidth: 1, borderColor: colors.divider },
+  unitChoice: { minWidth: 68, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, paddingHorizontal: spacing.md },
   list: { gap: spacing.md, marginTop: spacing.xxxl },
   preferenceCard: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   preferenceCardActive: { borderColor: 'rgba(215,170,98,0.28)', backgroundColor: colors.surfaceWarm },

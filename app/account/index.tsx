@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Eyebrow, IconButton, InlinePill, Screen, ScreenScroll } from '@/components/ui';
 import { useBar } from '@/state/BarProvider';
@@ -8,22 +8,12 @@ import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export default function AccountScreen() {
   const router = useRouter();
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const { snapshot, accountProfile, importState, retryGuestImport, signOut, resetGuest } = useBar();
   const sharedSubmissions = snapshot.productSubmissions.filter((submission) => submission.shareConsent);
   const pendingReviewCount = sharedSubmissions.filter(
     (submission) => submission.status === 'pending_review',
   ).length;
-
-  const confirmGuestReset = () => {
-    Alert.alert(
-      'Reset the guest bar?',
-      'This clears the separate guest inventory, saves, preferences, shopping and make sessions. A preview-account copy is not changed.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset guest bar', style: 'destructive', onPress: resetGuest },
-      ],
-    );
-  };
 
   return (
     <Screen>
@@ -127,9 +117,33 @@ export default function AccountScreen() {
         <View style={styles.dataSection}>
           <Text style={styles.dataTitle}>Guest data on this device</Text>
           <Text style={styles.dataBody}>Use this when you want to repeat onboarding from a clean local state.</Text>
-          <Button label="Reset guest bar" variant="danger" onPress={confirmGuestReset} />
+          <Button label="Reset guest bar" variant="danger" onPress={() => setResetConfirmOpen(true)} />
         </View>
       </ScreenScroll>
+      <Modal
+        visible={resetConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setResetConfirmOpen(false)}
+      >
+        <View style={styles.confirmScrim} accessibilityViewIsModal>
+          <View style={styles.confirmCard} accessibilityRole="alert">
+            <Text accessibilityRole="header" style={styles.confirmTitle}>Reset the guest bar?</Text>
+            <Text style={styles.confirmBody}>This clears the separate guest inventory, saves, preferences, shopping and make sessions. A preview-account copy is not changed.</Text>
+            <View style={styles.confirmActions}>
+              <Button label="Cancel" variant="ghost" onPress={() => setResetConfirmOpen(false)} />
+              <Button
+                label="Reset guest bar"
+                variant="danger"
+                onPress={() => {
+                  setResetConfirmOpen(false);
+                  resetGuest();
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -164,4 +178,9 @@ const styles = StyleSheet.create({
   dataSection: { gap: spacing.md, marginTop: spacing.huge, paddingTop: spacing.xl, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   dataTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 20 },
   dataBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
+  confirmScrim: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, backgroundColor: 'rgba(0,0,0,0.72)' },
+  confirmCard: { width: '100%', maxWidth: 460, gap: spacing.md, padding: spacing.xl, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
+  confirmTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 28 },
+  confirmBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
+  confirmActions: { gap: spacing.sm, marginTop: spacing.sm },
 });

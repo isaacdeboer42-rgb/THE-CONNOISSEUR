@@ -57,7 +57,7 @@ function isBasicId(id: IngredientId): id is BasicId {
 }
 
 function listNames(ids: IngredientId[]): string {
-  const names = ids.map((id) => ingredientById[id].shortName.toLowerCase());
+  const names = ids.map((id) => (ingredientById[id]?.shortName ?? id.replaceAll('-', ' ')).toLowerCase());
   if (names.length === 0) return '';
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;

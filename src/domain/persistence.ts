@@ -74,6 +74,7 @@ export function createEmptySnapshot(): BarSnapshot {
     basics: { 'standard-ice': 'unknown', 'large-ice': 'unknown' },
     savedRecipes: [],
     shoppingItems: [],
+    measurementSystem: 'metric',
     tastePreferences: {},
     sessionPreferences: { tastes: {}, excludedIngredientIds: [] },
     quickSelectHistory: [],
@@ -337,7 +338,7 @@ function normalizeMakeSessions(value: unknown): MakeSession[] {
       typeof session.servings === 'number' && Number.isFinite(session.servings)
         ? Math.trunc(session.servings)
         : recipe.baseServings;
-    const servings = Math.max(1, Math.min(4, rawServings));
+    const servings = Math.max(1, Math.min(8, rawServings));
     const completedAt = validDate(session.completedAt) ? session.completedAt : undefined;
     const updatedAt = validDate(session.updatedAt) ? session.updatedAt : session.startedAt;
     const feedback =
@@ -437,6 +438,7 @@ export function normalizeBarSnapshot(value: unknown): BarSnapshot {
     basics,
     savedRecipes: normalizeSaved(source.savedRecipes, source.savedRecipeIds),
     shoppingItems: normalizeShopping(source.shoppingItems),
+    measurementSystem: source.measurementSystem === 'us' ? 'us' : 'metric',
     tastePreferences: normalizePreferences(source.tastePreferences),
     sessionPreferences: {
       tastes: normalizePreferences(record(session).tastes),

@@ -6,6 +6,7 @@ import { IngredientRow } from '@/components/IngredientRow';
 import { Button, EmptyState, Eyebrow, IconButton, InlinePill, Screen, ScreenScroll, SectionHeading } from '@/components/ui';
 import { archivedRecipeById, ingredientById, recipeById } from '@/data/catalog';
 import { categoryLabel, matchRecipe } from '@/domain/matching';
+import { resolveTastePreferences } from '@/domain/preferences';
 import { ArchivedRecipeId, IngredientId, RecipeId } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -34,9 +35,13 @@ export default function RecipeDetailScreen() {
   const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const recipe = recipeById[recipeId as RecipeId];
   const archived = archivedRecipeById[recipeId as ArchivedRecipeId];
+  const tastePreferences = resolveTastePreferences(
+    snapshot.tastePreferences,
+    snapshot.sessionPreferences,
+  );
   const match = useMemo(
-    () => (recipe ? matchRecipe(recipe, snapshot.inventory, snapshot.basics) : undefined),
-    [recipe, snapshot.inventory, snapshot.basics],
+    () => (recipe ? matchRecipe(recipe, snapshot.inventory, snapshot.basics, tastePreferences) : undefined),
+    [recipe, snapshot.inventory, snapshot.basics, tastePreferences],
   );
 
   if (archived) {
@@ -163,8 +168,8 @@ export default function RecipeDetailScreen() {
                   <Text style={[styles.stepperGlyph, servings === 1 && styles.disabled]}>−</Text>
                 </Pressable>
                 <Text style={styles.stepperValue}>{servings}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Increase servings" disabled={servings === 4} onPress={() => setServings((value) => Math.min(4, value + 1))} style={styles.stepperButton}>
-                  <Text style={[styles.stepperGlyph, servings === 4 && styles.disabled]}>＋</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel="Increase servings" disabled={servings === 8} onPress={() => setServings((value) => Math.min(8, value + 1))} style={styles.stepperButton}>
+                  <Text style={[styles.stepperGlyph, servings === 8 && styles.disabled]}>＋</Text>
                 </Pressable>
               </View>
             }
@@ -188,11 +193,13 @@ export default function RecipeDetailScreen() {
                   status={status}
                   servings={servings}
                   baseServings={recipe.baseServings}
+                  measurementSystem={snapshot.measurementSystem}
                 />
               );
             })}
           </View>
           <Text style={styles.scalingNote}>Non-scalable ice and garnish amounts stay practical as servings change.</Text>
+          {servings > 4 ? <Text style={styles.batchNote}>For {servings} servings, make two batches so the shaker chills evenly.</Text> : null}
         </View>
 
         <View style={styles.section}>
@@ -295,6 +302,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.25 },
   ingredientList: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   scalingNote: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
+  batchNote: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 18 },
   equipmentPanel: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   equipmentStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   equipmentStatusGlyph: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.brassSoft, color: colors.brass, textAlign: 'center', lineHeight: 22, fontFamily: fonts.bodyMedium, fontSize: 11 },

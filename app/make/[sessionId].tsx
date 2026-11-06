@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useKeepAwake } from 'expo-keep-awake';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -17,6 +18,7 @@ function formatTimer(seconds: number) {
 }
 
 export default function MakeModeScreen() {
+  useKeepAwake('connoisseur-make-mode');
   const router = useRouter();
   const params = useLocalSearchParams<{ sessionId: string }>();
   const { snapshot, updateMakeSession } = useBar();
@@ -124,8 +126,9 @@ export default function MakeModeScreen() {
               const satisfied = match.satisfied.some((item) => item.requirementId === requirement.id);
               const unconfirmed = match.unconfirmedStaples.includes(ingredientId);
               const status = !requirement.required || requirement.garnish ? 'optional' : satisfied ? 'onHand' : unconfirmed ? 'unconfirmed' : 'missing';
-              return <IngredientRow key={requirement.id} requirement={requirement} status={status} servings={session.servings} baseServings={recipe.baseServings} />;
+              return <IngredientRow key={requirement.id} requirement={requirement} status={status} servings={session.servings} baseServings={recipe.baseServings} measurementSystem={snapshot.measurementSystem} />;
             })}
+            {session.servings > 4 ? <Text style={styles.batchNote}>Make this round in two batches for consistent chilling and dilution.</Text> : null}
           </View>
 
           <View style={styles.preflightCard}>
@@ -243,9 +246,9 @@ const styles = StyleSheet.create({
   feedbackButtonActive: { backgroundColor: colors.brassSoft, borderColor: 'rgba(215,170,98,0.3)' },
   feedbackButtonText: { color: colors.paperMuted, fontFamily: fonts.bodyMedium, fontSize: 12 },
   feedbackButtonTextActive: { color: colors.brass },
-  noteLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1.1, marginTop: spacing.xl },
+  noteLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.1, marginTop: spacing.xl },
   noteInput: { minHeight: 96, marginTop: spacing.sm, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, backgroundColor: colors.ink, color: colors.paper, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, padding: spacing.md, textAlignVertical: 'top' },
-  noteCount: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, textAlign: 'right', marginTop: spacing.xs },
+  noteCount: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, textAlign: 'right', marginTop: spacing.xs },
   preflightScroll: { paddingBottom: spacing.huge },
   makeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, marginBottom: spacing.xxxl },
   savedLabel: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.3 },
@@ -254,6 +257,7 @@ const styles = StyleSheet.create({
   preflightBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, marginTop: spacing.md },
   preflightCard: { marginTop: spacing.xxl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg },
   preflightSectionTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 23, marginBottom: spacing.md },
+  batchNote: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 18, marginTop: spacing.md },
   equipmentGrid: { gap: spacing.md },
   equipmentItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   equipmentGlyph: { color: colors.brass, fontFamily: fonts.body, fontSize: 13 },

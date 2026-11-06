@@ -66,7 +66,7 @@ describe('make-session persistence hardening', () => {
 
     expect(snapshot.makeSessions).toEqual([
       expect.objectContaining({ id: 'low', servings: 1, stepIndex: -1, updatedAt: startedAt }),
-      expect.objectContaining({ id: 'high', servings: 4, stepIndex: 3 }),
+      expect.objectContaining({ id: 'high', servings: 8, stepIndex: 3 }),
       expect.objectContaining({ id: 'missing-numbers', servings: 1, stepIndex: -1 }),
     ]);
   });

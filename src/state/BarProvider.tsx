@@ -13,6 +13,7 @@ import React, {
 import { ingredientById, recipeById, recipes } from '@/data/catalog';
 import { verifiedProductById } from '@/data/products';
 import { getRecommendations } from '@/domain/matching';
+import { patchForRequestedServings } from '@/domain/makeSessions';
 import { SAMPLE_INGREDIENT_IDS, STARTER_INGREDIENT_IDS } from '@/domain/onboarding';
 import {
   createEmptySnapshot,
@@ -45,6 +46,7 @@ import {
   InventoryItem,
   MakeSession,
   MatchResult,
+  MeasurementSystem,
   NewPrivateProductInput,
   PrivateProductUpdateInput,
   ProductSubmissionStatus,
@@ -133,6 +135,7 @@ type SnapshotAction =
   | { type: 'addShopping'; ingredientId: IngredientId; timestamp: string }
   | { type: 'removeShopping'; ingredientId: IngredientId }
   | { type: 'setPersistentPreference'; dimension: FlavourDimension; value?: TastePreference }
+  | { type: 'setMeasurementSystem'; value: MeasurementSystem }
   | { type: 'setSessionPreference'; dimension: FlavourDimension; value?: TastePreference }
   | { type: 'clearSessionPreferences' }
   | { type: 'recordQuickSelect'; recipeId: RecipeId; timestamp: string }
@@ -176,8 +179,8 @@ function sampleSnapshot(): BarSnapshot {
     inventory: SAMPLE_INGREDIENT_IDS.map((ingredientId) => makeInventoryItem(ingredientId, addedAt)),
     basics: { 'standard-ice': 'available', 'large-ice': 'available' },
     tastePreferences: {
-      sour: { intensity: 0.75, importance: 0.7 },
-      spiritForward: { intensity: 0.62, importance: 0.45 },
+      sour: { intensity: 0.85, importance: 0.7 },
+      spiritForward: { intensity: 0.55, importance: 0.35 },
     },
     hasOnboarded: true,
   };
@@ -392,6 +395,8 @@ function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnaps
       else delete tastePreferences[action.dimension];
       return { ...snapshot, tastePreferences };
     }
+    case 'setMeasurementSystem':
+      return { ...snapshot, measurementSystem: action.value };
     case 'setSessionPreference': {
       const tastes = { ...snapshot.sessionPreferences.tastes };
       if (action.value) tastes[action.dimension] = action.value;
@@ -489,7 +494,9 @@ function reducer(state: AppState, action: Action): AppState {
               message: action.notice,
               canUndo: Boolean(action.undoable),
             }
-          : state.notice,
+          : !action.undoable && state.undo?.expiresAt
+            ? undefined
+            : state.notice,
         undo: action.undoable
           ? { mode: action.mode, snapshot: before, expiresAt: Date.now() + 30_000 }
           : undefined,
@@ -545,7 +552,11 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
     case 'expireUndo':
-      return { ...state, undo: undefined };
+      return {
+        ...state,
+        undo: undefined,
+        notice: state.notice?.canUndo ? undefined : state.notice,
+      };
     case 'clearNotice':
       return { ...state, notice: undefined };
   }
@@ -603,6 +614,7 @@ interface BarContextValue {
   addShoppingItem: (ingredientId: IngredientId) => void;
   removeShoppingItem: (ingredientId: IngredientId) => void;
   setPersistentPreference: (dimension: FlavourDimension, value?: TastePreference) => void;
+  setMeasurementSystem: (value: MeasurementSystem) => void;
   setSessionPreference: (dimension: FlavourDimension, value?: TastePreference) => void;
   clearSessionPreferences: () => void;
   chooseQuickRecipe: (allowOneAway?: boolean) => MatchResult | undefined;
@@ -926,6 +938,8 @@ export function BarProvider({ children }: PropsWithChildren) {
         mutate({ type: 'removeShopping', ingredientId }, 'Shopping item removed'),
       setPersistentPreference: (dimension, preference) =>
         mutate({ type: 'setPersistentPreference', dimension, value: preference }),
+      setMeasurementSystem: (measurementSystem) =>
+        mutate({ type: 'setMeasurementSystem', value: measurementSystem }),
       setSessionPreference: (dimension, preference) =>
         mutate({ type: 'setSessionPreference', dimension, value: preference }),
       clearSessionPreferences: () => mutate({ type: 'clearSessionPreferences' }),
@@ -950,7 +964,12 @@ export function BarProvider({ children }: PropsWithChildren) {
             session.recipeVersionId === recipe.versionId &&
             !session.completedAt,
         );
-        if (existing) return existing.id;
+        if (existing) {
+          const timestamp = new Date().toISOString();
+          const patch = patchForRequestedServings(existing, servings, timestamp);
+          if (patch) mutate({ type: 'patchSession', sessionId: existing.id, patch });
+          return existing.id;
+        }
 
         const timestamp = new Date().toISOString();
         const session: MakeSession = {

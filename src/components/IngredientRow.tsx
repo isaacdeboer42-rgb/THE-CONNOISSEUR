@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ingredientById } from '@/data/catalog';
 import { formatRequirementAmount } from '@/domain/format';
-import { IngredientId, RecipeRequirement } from '@/domain/types';
+import { IngredientId, MeasurementSystem, RecipeRequirement } from '@/domain/types';
 import { colors, fonts, spacing } from '@/theme/tokens';
 
 export function IngredientRow({
@@ -11,11 +11,13 @@ export function IngredientRow({
   status,
   servings,
   baseServings,
+  measurementSystem = 'metric',
 }: {
   requirement: RecipeRequirement;
   status: 'onHand' | 'missing' | 'optional' | 'unconfirmed';
   servings: number;
   baseServings: number;
+  measurementSystem?: MeasurementSystem;
 }) {
   const ingredientId = requirement.alternatives[0] as IngredientId;
   const ingredient = ingredientById[ingredientId];
@@ -30,7 +32,7 @@ export function IngredientRow({
     <View
       style={styles.row}
       accessible
-      accessibilityLabel={`${ingredient.name}, ${formatRequirementAmount(requirement, servings, baseServings)}, ${labels[status]}`}
+      accessibilityLabel={`${ingredient.name}, ${formatRequirementAmount(requirement, servings, baseServings, measurementSystem)}, ${labels[status]}`}
     >
       <View style={[styles.status, styles[`status_${status}`]]}>
         <Text style={[styles.statusGlyph, styles[`statusGlyph_${status}`]]}>
@@ -42,7 +44,7 @@ export function IngredientRow({
         {requirement.preparation ? <Text style={styles.preparation}>{requirement.preparation}</Text> : null}
       </View>
       <View style={styles.value}>
-        <Text style={styles.amount}>{formatRequirementAmount(requirement, servings, baseServings)}</Text>
+        <Text style={styles.amount}>{formatRequirementAmount(requirement, servings, baseServings, measurementSystem)}</Text>
         <Text style={[styles.label, styles[`label_${status}`]]}>{labels[status]}</Text>
       </View>
     </View>

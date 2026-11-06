@@ -24,19 +24,19 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="tonight"
-        options={{ title: 'Tonight', tabBarIcon: ({ color }) => <TabGlyph glyph="✦" color={color} /> }}
+        options={{ title: 'Tonight', tabBarIcon: ({ color }: { color: ColorValue }) => <TabGlyph glyph="✦" color={color} /> }}
       />
       <Tabs.Screen
         name="bar"
-        options={{ title: 'My Bar', tabBarIcon: ({ color }) => <TabGlyph glyph="▥" color={color} /> }}
+        options={{ title: 'My Bar', tabBarIcon: ({ color }: { color: ColorValue }) => <TabGlyph glyph="▥" color={color} /> }}
       />
       <Tabs.Screen
         name="discover"
-        options={{ title: 'Discover', tabBarIcon: ({ color }) => <TabGlyph glyph="⌕" color={color} /> }}
+        options={{ title: 'Discover', tabBarIcon: ({ color }: { color: ColorValue }) => <TabGlyph glyph="⌕" color={color} /> }}
       />
       <Tabs.Screen
         name="saved"
-        options={{ title: 'Saved', tabBarIcon: ({ color }) => <TabGlyph glyph="♡" color={color} /> }}
+        options={{ title: 'Saved', tabBarIcon: ({ color }: { color: ColorValue }) => <TabGlyph glyph="♡" color={color} /> }}
       />
     </Tabs>
   );

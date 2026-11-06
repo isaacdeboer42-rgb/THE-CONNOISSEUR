@@ -128,6 +128,7 @@ export interface ProductSubmission {
 }
 
 export type MeasurementUnit = 'ml' | 'dash' | 'piece' | 'leaf' | 'egg' | 'scoop';
+export type MeasurementSystem = 'metric' | 'us';
 
 export interface RecipeRequirement {
   id: string;
@@ -249,6 +250,7 @@ export interface BarSnapshot {
   basics: Record<BasicId, StapleState>;
   savedRecipes: SavedRecipe[];
   shoppingItems: ShoppingItem[];
+  measurementSystem: MeasurementSystem;
   tastePreferences: TastePreferences;
   sessionPreferences: SessionPreferences;
   quickSelectHistory: QuickSelectHistoryItem[];

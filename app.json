@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "scheme": "connoisseur",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "backgroundColor": "#0B0E0D",
     "ios": {
       "supportsTablet": true,

@@ -15,6 +15,7 @@ describe('Milestone 4 release configuration', () => {
     expect(config.android.package).toBe('com.connoisseur.app');
     expect(config.android.versionCode).toBe(1);
     expect(config.runtimeVersion.policy).toBe('appVersion');
+    expect(config.newArchEnabled).toBeUndefined();
   });
 
   it('defines internal and production build profiles with remote auto-increment', () => {
@@ -32,6 +33,13 @@ describe('Milestone 4 release configuration', () => {
       'docs/PRIVACY_SECURITY.md',
       'docs/CONTENT_GUIDE.md',
       'docs/TEST_EVIDENCE.md',
+      'docs/UX_AUDIT.md',
+      'docs/UX_INFORMATION_ARCHITECTURE.md',
+      'docs/UX_SCREEN_SPEC.md',
+      'docs/UX_STATE_CONTENT_SPEC.md',
+      'docs/UX_BACKLOG.md',
+      'docs/UX_USABILITY_TEST_PACK.md',
+      'docs/UX_HANDOVER.md',
     ].forEach((file) => expect(fs.existsSync(path.join(root, file)), file).toBe(true));
   });
 });

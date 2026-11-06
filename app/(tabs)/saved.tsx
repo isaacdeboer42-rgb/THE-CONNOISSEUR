@@ -7,12 +7,17 @@ import { Button, EmptyState, Eyebrow, Screen, ScreenScroll, SectionHeading } fro
 import { archivedRecipeById, recipeById } from '@/data/catalog';
 import { ArchivedRecipeId } from '@/domain/types';
 import { matchRecipe } from '@/domain/matching';
+import { resolveTastePreferences } from '@/domain/preferences';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, spacing } from '@/theme/tokens';
 
 export default function SavedScreen() {
   const router = useRouter();
   const { snapshot, toggleSaved } = useBar();
+  const tastePreferences = resolveTastePreferences(
+    snapshot.tastePreferences,
+    snapshot.sessionPreferences,
+  );
   const withdrawn = useMemo(
     () =>
       [...snapshot.savedRecipes]
@@ -36,12 +41,12 @@ export default function SavedScreen() {
         if (!recipe) return;
         const entry = {
           savedAt: saved.savedAt,
-          match: matchRecipe(recipe, snapshot.inventory, snapshot.basics),
+          match: matchRecipe(recipe, snapshot.inventory, snapshot.basics, tastePreferences),
         };
         byFamily.set(recipe.familyId, [...(byFamily.get(recipe.familyId) ?? []), entry]);
       });
     return [...byFamily.entries()];
-  }, [snapshot.basics, snapshot.inventory, snapshot.savedRecipes]);
+  }, [snapshot.basics, snapshot.inventory, snapshot.savedRecipes, tastePreferences]);
 
   return (
     <Screen>
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
   },
-  withdrawnLabel: { color: colors.alert, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1 },
+  withdrawnLabel: { color: colors.alert, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1 },
   withdrawnTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 25 },
   withdrawnBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
 });

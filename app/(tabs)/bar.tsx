@@ -159,28 +159,28 @@ export default function MyBarScreen() {
                 })}
               </View>
             </View>
-
-            <View style={styles.section}>
-              <SectionHeading eyebrow="Kitchen basics" title="Ice for making and serving" />
-              <View style={styles.stapleRow}>
-                {iceBasics.map((basic) => (
-                  <View key={basic.id} style={styles.stapleCard}>
-                    <Text style={styles.stapleGlyph}>{basic.glyph}</Text>
-                    <Text style={styles.stapleName}>{basic.label}</Text>
-                    <Text style={styles.stapleDescription}>{basic.description}</Text>
-                    <Text
-                      accessibilityLabel={`${basic.label}: ${snapshot.basics[basic.id]}`}
-                      style={styles.stapleValue}
-                    >
-                      {snapshot.basics[basic.id]}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              <Button label="Edit ingredients and ice" variant="ghost" onPress={() => router.push('/setup')} />
-            </View>
           </>
         )}
+
+        <View style={styles.section}>
+          <SectionHeading eyebrow="Kitchen basics" title="Ice for making and serving" />
+          <View style={styles.stapleRow}>
+            {iceBasics.map((basic) => (
+              <View key={basic.id} style={styles.stapleCard}>
+                <Text style={styles.stapleGlyph}>{basic.glyph}</Text>
+                <Text style={styles.stapleName}>{basic.label}</Text>
+                <Text style={styles.stapleDescription}>{basic.description}</Text>
+                <Text
+                  accessibilityLabel={`${basic.label}: ${snapshot.basics[basic.id]}`}
+                  style={styles.stapleValue}
+                >
+                  {snapshot.basics[basic.id]}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Button label="Edit ingredients and ice" variant="ghost" onPress={() => router.push('/setup')} />
+        </View>
       </ScreenScroll>
     </Screen>
   );

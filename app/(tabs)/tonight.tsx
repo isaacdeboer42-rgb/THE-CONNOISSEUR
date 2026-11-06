@@ -7,6 +7,7 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { Button, ConnoisseurMark, EmptyState, Eyebrow, IconButton, Screen, ScreenScroll, SectionHeading } from '@/components/ui';
 import { ingredientById, ingredients } from '@/data/catalog';
 import { iceChoicesConfirmed } from '@/domain/onboarding';
+import { withoutFeaturedRecipe } from '@/domain/recommendationPresentation';
 import { IngredientId, MatchResult } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
@@ -151,10 +152,12 @@ export default function TonightScreen() {
     setSessionPreference,
     clearSessionPreferences,
     toggleSaved,
+    activateGuest,
   } = useBar();
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [quickPick, setQuickPick] = useState<MatchResult>();
   const [quickEmpty, setQuickEmpty] = useState(false);
+  const [sortMode, setSortMode] = useState<'availability' | 'taste'>('availability');
   const inventoryCount = new Set(
     snapshot.inventory
       .filter((item) => item.status === 'onHand')
@@ -164,6 +167,9 @@ export default function TonightScreen() {
   const nearly = recommendations.filter((match) => match.category === 'oneAway');
   const explore = recommendations.filter((match) => match.category === 'moreToExplore');
   const firstMatch = ready[0] ?? nearly[0] ?? explore[0];
+  const tasteLed = [...recommendations].sort(
+    (left, right) => right.tasteMatch - left.tasteMatch || right.score - left.score,
+  );
   const iceConfirmed = iceChoicesConfirmed(snapshot.basics);
 
   if (!iceConfirmed) {
@@ -222,7 +228,10 @@ export default function TonightScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace('/')}
+              onPress={() => {
+                activateGuest();
+                router.replace('/');
+              }}
               hitSlop={8}
             >
               <Text style={styles.sampleAction}>Exit</Text>
@@ -297,6 +306,29 @@ export default function TonightScreen() {
           </ScrollView>
         </View>
 
+        <View style={styles.sortRow}>
+          <View>
+            <Text style={styles.preferenceLabel}>SORT RECOMMENDATIONS</Text>
+            <Text style={styles.sortHint}>Status labels stay visible in either view.</Text>
+          </View>
+          <View style={styles.sortChoices} accessibilityRole="radiogroup" accessibilityLabel="Recommendation sorting">
+            {(['availability', 'taste'] as const).map((option) => {
+              const active = sortMode === option;
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setSortMode(option)}
+                  style={[styles.sortChoice, active && styles.sortChoiceActive]}
+                >
+                  <Text style={[styles.sortChoiceText, active && styles.sortChoiceTextActive]}>{option === 'availability' ? 'Availability' : 'Taste-led'}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {mode === 'guest' && inventoryCount > 0 ? (
           <View style={styles.accountBanner}>
             <View style={styles.accountBannerCopy}>
@@ -319,6 +351,36 @@ export default function TonightScreen() {
               </View>
             )}
           />
+        ) : sortMode === 'taste' ? (
+          <>
+            <View style={styles.sectionGap}>
+              <SectionHeading eyebrow="Taste-led view" title="Closest to your preferences" />
+              <Text style={styles.sortExplanation}>Taste changes order only. Each card still says whether it is ready or what is missing.</Text>
+            </View>
+            <View style={styles.cardList}>
+              {tasteLed.map((match) => (
+                <RecipeCard
+                  key={match.recipe.id}
+                  match={match}
+                  onPress={() => router.push(`/recipe/${match.recipe.id}`)}
+                  onQuickAdd={quickAddIngredient}
+                />
+              ))}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Quick Select a cocktail"
+              onPress={() => pickQuick(false)}
+              style={({ pressed }) => [styles.quickSelect, pressed && styles.pressed]}
+            >
+              <View style={styles.quickSelectGlyph}><Text style={styles.quickSelectGlyphText}>✦</Text></View>
+              <View style={styles.quickSelectCopy}>
+                <Text style={styles.quickSelectTitle}>Quick Select</Text>
+                <Text style={styles.quickSelectBody}>Uses ready recipes and your active preferences</Text>
+              </View>
+              <Text style={styles.quickSelectArrow}>→</Text>
+            </Pressable>
+          </>
         ) : (
           <>
             <View style={styles.sectionGap}>
@@ -383,7 +445,7 @@ export default function TonightScreen() {
               <View style={styles.group}>
                 <SectionHeading eyebrow="More to explore" title="A little further down the shelf" />
                 <View style={styles.cardList}>
-                  {explore.map((match) => (
+                  {withoutFeaturedRecipe(explore, firstMatch).map((match) => (
                     <RecipeCard key={match.recipe.id} match={match} onPress={() => router.push(`/recipe/${match.recipe.id}`)} />
                   ))}
                 </View>
@@ -446,6 +508,14 @@ const styles = StyleSheet.create({
   preferenceChipTextActive: { color: colors.brass, fontFamily: fonts.bodyMedium },
   clearChip: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: 'center' },
   clearChipText: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.xxl },
+  sortHint: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  sortChoices: { flexDirection: 'row', padding: 3, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
+  sortChoice: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  sortChoiceActive: { backgroundColor: colors.brassSoft },
+  sortChoiceText: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 11 },
+  sortChoiceTextActive: { color: colors.brass },
+  sortExplanation: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginTop: spacing.sm },
   accountBanner: { marginBottom: spacing.xxl, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(215,170,98,0.2)', backgroundColor: colors.surfaceWarm, padding: spacing.lg, gap: spacing.lg },
   accountBannerCopy: { gap: 4 },
   accountBannerTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 21 },

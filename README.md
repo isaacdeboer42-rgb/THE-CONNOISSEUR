@@ -35,6 +35,8 @@ A polished Expo/React Native vertical slice for discovering cocktails from the i
 - EAS internal/production profiles, stable store identifiers, app-version runtime policy, and iOS privacy-manifest baseline
 - Release CI that type-checks, runs 50 tests, and produces a static production web export
 - Deployment, recovery, security, content, accessibility/device, performance, usability, and store-submission handover docs
+- Implementation-ready UX audit, journey maps, annotated screen contracts, state/content rules, backlog and usability test pack
+- Testable Availability/Taste-led recommendation views, persistent ml/fl-oz preference, 1–8 serving scaling and batch guidance
 
 ## Run locally
 
@@ -52,5 +54,9 @@ pnpm check
 ```
 
 Use `pnpm check:release` for the full release gate, including the production web export. See [Release readiness](docs/RELEASE_READINESS.md) for the native/store checklist and the remaining external launch blockers.
+
+## UX handover
+
+Start with [UX audit](docs/UX_AUDIT.md), [information architecture](docs/UX_INFORMATION_ARCHITECTURE.md), and [prototype handover](docs/UX_HANDOVER.md). The [developer backlog](docs/UX_BACKLOG.md) and [usability test pack](docs/UX_USABILITY_TEST_PACK.md) separate proposed production work and success targets from verified implementation evidence.
 
 Guest and preview-account state are stored through a versioned AsyncStorage boundary in this slice. The preview does not request passwords, perform authentication, open the camera, contact an external barcode provider, upload label references, run a hosted AI model, or publish catalogue records. Supabase authentication, PostgreSQL sync, secure photo storage, server-side provider/AI adapters, transactional catalogue approval, and physical-device camera testing require deployment configuration; the domain, migration, and UI layers are ready to move behind those adapters.
