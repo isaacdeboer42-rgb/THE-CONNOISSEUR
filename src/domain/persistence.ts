@@ -6,13 +6,18 @@ import {
   IngredientId,
   InventoryItem,
   MakeSession,
+  PrivateProduct,
+  ProductSubmission,
+  ProductSubmissionStatus,
   RecipeId,
   SavedRecipe,
   ShoppingItem,
   StapleState,
   TastePreferences,
 } from '@/domain/types';
+import { normalizeBarcode } from '@/domain/barcode';
 import { recipeById } from '@/data/catalog';
+import { verifiedProductById } from '@/data/products';
 
 export interface LocalAccountRecord {
   profile: AccountProfile;
@@ -38,6 +43,7 @@ export interface GuestImportReport {
 
 const ingredientIds = new Set<IngredientId>([
   'bourbon',
+  'vodka',
   'simple-syrup',
   'egg-white',
   'lemon-juice',
@@ -49,7 +55,7 @@ const ingredientIds = new Set<IngredientId>([
   'orange-peel',
 ]);
 
-const recipeIds = new Set<RecipeId>(['whiskey-sour', 'old-fashioned', 'bourbon-smash']);
+const recipeIds = new Set<RecipeId>(['whiskey-sour', 'old-fashioned', 'bourbon-smash', 'vodka-sour']);
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -70,6 +76,9 @@ export function createEmptySnapshot(): BarSnapshot {
     sessionPreferences: { tastes: {}, excludedIngredientIds: [] },
     quickSelectHistory: [],
     makeSessions: [],
+    privateProducts: [],
+    productSubmissions: [],
+    completedScanOperationIds: [],
     completedGuestImportIds: [],
     hasOnboarded: false,
   };
@@ -82,15 +91,47 @@ function normalizeInventory(value: unknown): InventoryItem[] {
     const item = record(raw);
     const ingredientId = item.ingredientId;
     if (typeof ingredientId !== 'string' || !ingredientIds.has(ingredientId as IngredientId)) return;
+    const productId = typeof item.productId === 'string' && item.productId.trim() ? item.productId : undefined;
+    const privateProductId =
+      !productId && typeof item.privateProductId === 'string' && item.privateProductId.trim()
+        ? item.privateProductId
+        : undefined;
+    const source = item.source === 'product' || productId || privateProductId ? 'product' : 'generic';
+    if (source === 'product' && !productId && !privateProductId) return;
+    const scanNormalization =
+      source === 'product' && typeof item.scannedBarcodeOriginal === 'string'
+        ? normalizeBarcode(item.scannedBarcodeOriginal)
+        : undefined;
+    const hasValidScanMetadata = Boolean(
+      scanNormalization?.ok &&
+      (item.scannedBarcodeSymbology === 'ean13' || item.scannedBarcodeSymbology === 'upca') &&
+      scanNormalization.symbology === item.scannedBarcodeSymbology &&
+      (!productId || !verifiedProductById[productId] || scanNormalization.canonicalBarcode === verifiedProductById[productId].barcode),
+    );
     const normalized: InventoryItem = {
       id: typeof item.id === 'string' ? item.id : `generic-${ingredientId}-${index}`,
       ingredientId: ingredientId as IngredientId,
       status: item.status === 'outOfStock' ? 'outOfStock' : 'onHand',
-      source: item.source === 'product' ? 'product' : 'generic',
+      source,
+      ...(productId ? { productId } : {}),
+      ...(privateProductId ? { privateProductId } : {}),
+      ...(hasValidScanMetadata
+        ? {
+            scannedBarcodeOriginal: item.scannedBarcodeOriginal as string,
+            scannedBarcodeSymbology: item.scannedBarcodeSymbology as InventoryItem['scannedBarcodeSymbology'],
+          }
+        : {}),
       addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date(0).toISOString(),
-      revision: typeof item.revision === 'number' ? item.revision : 1,
+      revision:
+        typeof item.revision === 'number' && Number.isFinite(item.revision)
+          ? Math.max(1, Math.trunc(item.revision))
+          : 1,
     };
-    byKey.set(`${normalized.source}:${normalized.ingredientId}`, normalized);
+    const key =
+      normalized.source === 'generic'
+        ? `generic:${normalized.ingredientId}`
+        : `product:${normalized.productId ?? normalized.privateProductId ?? normalized.id}`;
+    byKey.set(key, normalized);
   });
   return [...byKey.values()];
 }
@@ -148,6 +189,128 @@ function normalizePreferences(value: unknown): TastePreferences {
 
 function validDate(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function normalizePrivateProducts(value: unknown): PrivateProduct[] {
+  if (!Array.isArray(value)) return [];
+  const byId = new Map<string, PrivateProduct>();
+  value.forEach((raw) => {
+    const item = record(raw);
+    if (typeof item.id !== 'string' || !item.id.trim()) return;
+    if (typeof item.barcode !== 'string') return;
+    if (typeof item.originalBarcode !== 'string' || !item.originalBarcode.trim()) return;
+    if (item.symbology !== 'ean13' && item.symbology !== 'upca') return;
+    const normalizedBarcode = normalizeBarcode(item.originalBarcode);
+    if (
+      !normalizedBarcode.ok ||
+      normalizedBarcode.canonicalBarcode !== item.barcode ||
+      normalizedBarcode.symbology !== item.symbology
+    ) return;
+    if (typeof item.name !== 'string' || !item.name.trim()) return;
+    if (typeof item.ingredientId !== 'string' || !ingredientIds.has(item.ingredientId as IngredientId)) return;
+    if (!validDate(item.createdAt)) return;
+
+    const normalized: PrivateProduct = {
+      id: item.id,
+      barcode: item.barcode,
+      originalBarcode: item.originalBarcode,
+      symbology: item.symbology,
+      name: item.name.trim(),
+      ...(typeof item.brand === 'string' && item.brand.trim() ? { brand: item.brand.trim() } : {}),
+      ingredientId: item.ingredientId as IngredientId,
+      ...(typeof item.bottleSizeMl === 'number' && Number.isFinite(item.bottleSizeMl)
+        ? { bottleSizeMl: Math.max(1, Math.round(item.bottleSizeMl)) }
+        : {}),
+      ...(typeof item.labelPhotoUri === 'string' && item.labelPhotoUri.trim()
+        ? { labelPhotoUri: item.labelPhotoUri }
+        : {}),
+      createdAt: item.createdAt,
+      updatedAt: validDate(item.updatedAt) ? item.updatedAt : item.createdAt,
+    };
+    byId.set(normalized.id, normalized);
+  });
+  return [...byId.values()];
+}
+
+const submissionStatuses = new Set<ProductSubmissionStatus>([
+  'draft',
+  'submitted',
+  'processing',
+  'pending_review',
+  'approved',
+  'merged',
+  'rejected',
+]);
+
+function normalizeProductSubmissions(
+  value: unknown,
+  privateProductIds: Set<string>,
+  privateProductIdRemap: Map<string, string>,
+): ProductSubmission[] {
+  if (!Array.isArray(value)) return [];
+  const byPrivateProductId = new Map<string, ProductSubmission>();
+  const usedIds = new Set<string>();
+  value.forEach((raw) => {
+    const item = record(raw);
+    if (typeof item.id !== 'string' || !item.id.trim()) return;
+    if (usedIds.has(item.id) || typeof item.privateProductId !== 'string') return;
+    const privateProductId = privateProductIdRemap.get(item.privateProductId) ?? item.privateProductId;
+    if (!privateProductIds.has(privateProductId)) return;
+    if (typeof item.status !== 'string' || !submissionStatuses.has(item.status as ProductSubmissionStatus)) return;
+    if (!validDate(item.createdAt)) return;
+    if (item.status !== 'draft' && item.shareConsent !== true) return;
+
+    const submitted = record(item.submittedFields);
+    const submittedFields: ProductSubmission['submittedFields'] =
+      typeof submitted.name === 'string' && submitted.name.trim() &&
+      typeof submitted.ingredientId === 'string' && ingredientIds.has(submitted.ingredientId as IngredientId)
+        ? {
+            name: submitted.name.trim(),
+            ...(typeof submitted.brand === 'string' && submitted.brand.trim()
+              ? { brand: submitted.brand.trim() }
+              : {}),
+            ingredientId: submitted.ingredientId as IngredientId,
+            ...(typeof submitted.bottleSizeMl === 'number' && Number.isFinite(submitted.bottleSizeMl)
+              ? { bottleSizeMl: Math.max(1, Math.round(submitted.bottleSizeMl)) }
+              : {}),
+          }
+        : undefined;
+    const extracted = record(item.extractedFields);
+    const extractedFields: ProductSubmission['extractedFields'] = {};
+    if (typeof extracted.name === 'string' && extracted.name.trim()) extractedFields.name = extracted.name.trim();
+    if (typeof extracted.brand === 'string' && extracted.brand.trim()) extractedFields.brand = extracted.brand.trim();
+    if (typeof extracted.ingredientId === 'string' && ingredientIds.has(extracted.ingredientId as IngredientId)) {
+      extractedFields.ingredientId = extracted.ingredientId as IngredientId;
+    }
+    if (typeof extracted.bottleSizeMl === 'number' && Number.isFinite(extracted.bottleSizeMl)) {
+      extractedFields.bottleSizeMl = Math.max(1, Math.round(extracted.bottleSizeMl));
+    }
+
+    const normalized: ProductSubmission = {
+      id: item.id,
+      privateProductId,
+      status: item.status as ProductSubmissionStatus,
+      shareConsent: item.status === 'draft' ? false : true,
+      createdAt: item.createdAt,
+      updatedAt: validDate(item.updatedAt) ? item.updatedAt : item.createdAt,
+      ...(submittedFields ? { submittedFields } : {}),
+      ...(Object.keys(extractedFields).length ? { extractedFields } : {}),
+      ...(typeof item.sourcePhotoUri === 'string' && item.sourcePhotoUri.trim()
+        ? { sourcePhotoUri: item.sourcePhotoUri }
+        : {}),
+      ...(typeof item.modelId === 'string' && item.modelId.trim() ? { modelId: item.modelId } : {}),
+      ...(typeof item.processingError === 'string' && item.processingError.trim()
+        ? { processingError: item.processingError }
+        : {}),
+    };
+    const existing = byPrivateProductId.get(privateProductId);
+    if (!existing || Date.parse(normalized.updatedAt) >= Date.parse(existing.updatedAt)) {
+      if (existing) usedIds.delete(existing.id);
+      byPrivateProductId.set(privateProductId, normalized);
+      usedIds.add(normalized.id);
+    }
+  });
+  return [...byPrivateProductId.values()];
 }
 
 function normalizeMakeSessions(value: unknown): MakeSession[] {
@@ -226,10 +389,44 @@ export function normalizeBarSnapshot(value: unknown): BarSnapshot {
     typeof session.selectedSpiritId === 'string' && ingredientIds.has(session.selectedSpiritId as IngredientId)
       ? (session.selectedSpiritId as IngredientId)
       : undefined;
+  const privateProductByBarcode = new Map<string, PrivateProduct>();
+  const privateProductIdRemap = new Map<string, string>();
+  normalizePrivateProducts(source.privateProducts).forEach((product) => {
+    const existing = privateProductByBarcode.get(product.barcode);
+    if (existing) {
+      privateProductIdRemap.set(product.id, existing.id);
+    } else {
+      privateProductByBarcode.set(product.barcode, product);
+      privateProductIdRemap.set(product.id, product.id);
+    }
+  });
+  const privateProducts = [...privateProductByBarcode.values()];
+  const privateProductById = new Map(privateProducts.map((product) => [product.id, product]));
+  const privateProductIds = new Set(privateProducts.map((product) => product.id));
+  const inventoryByKey = new Map<string, InventoryItem>();
+  normalizeInventory(source.inventory)
+    .map((item) => {
+      if (!item.privateProductId) return item;
+      const privateProductId = privateProductIdRemap.get(item.privateProductId) ?? item.privateProductId;
+      const canonicalProduct = privateProductById.get(privateProductId);
+      return {
+        ...item,
+        privateProductId,
+        ...(canonicalProduct ? { ingredientId: canonicalProduct.ingredientId } : {}),
+      };
+    })
+    .filter((item) => !item.privateProductId || privateProductIds.has(item.privateProductId))
+    .forEach((item) => {
+      const key = item.source === 'generic'
+        ? `generic:${item.ingredientId}`
+        : `product:${item.productId ?? item.privateProductId ?? item.id}`;
+      inventoryByKey.set(key, item);
+    });
+  const inventory = [...inventoryByKey.values()];
 
   return {
     ...createEmptySnapshot(),
-    inventory: normalizeInventory(source.inventory),
+    inventory,
     basics,
     savedRecipes: normalizeSaved(source.savedRecipes, source.savedRecipeIds),
     shoppingItems: normalizeShopping(source.shoppingItems),
@@ -250,6 +447,16 @@ export function normalizeBarSnapshot(value: unknown): BarSnapshot {
         }).slice(-5)
       : [],
     makeSessions: normalizeMakeSessions(source.makeSessions),
+    privateProducts,
+    productSubmissions: normalizeProductSubmissions(
+      source.productSubmissions,
+      privateProductIds,
+      privateProductIdRemap,
+    ),
+    completedScanOperationIds: Array.isArray(source.completedScanOperationIds)
+      ? [...new Set(source.completedScanOperationIds.filter((id): id is string => typeof id === 'string' && Boolean(id.trim())))]
+          .slice(-100)
+      : [],
     completedGuestImportIds: Array.isArray(source.completedGuestImportIds)
       ? source.completedGuestImportIds.filter((id): id is string => typeof id === 'string')
       : [],
@@ -326,11 +533,51 @@ export function mergeGuestIntoAccount(
     };
   }
 
-  const inventory = new Map(account.inventory.map((item) => [`${item.source}:${item.ingredientId}`, item]));
+  const privateProducts = new Map(account.privateProducts.map((product) => [product.id, product]));
+  const privateProductIdByBarcode = new Map(
+    account.privateProducts.map((product) => [product.barcode, product.id]),
+  );
+  const guestPrivateProductIdRemap = new Map<string, string>();
+  guest.privateProducts.forEach((product, index) => {
+    const existingId = privateProductIdByBarcode.get(product.barcode);
+    if (existingId) {
+      guestPrivateProductIdRemap.set(product.id, existingId);
+      return;
+    }
+    let canonicalId = product.id;
+    let collisionIndex = index;
+    while (privateProducts.has(canonicalId)) {
+      canonicalId = `${product.id}-guest-${collisionIndex}`;
+      collisionIndex += 1;
+    }
+    const canonicalProduct = canonicalId === product.id ? product : { ...product, id: canonicalId };
+    privateProducts.set(canonicalId, canonicalProduct);
+    privateProductIdByBarcode.set(product.barcode, canonicalId);
+    guestPrivateProductIdRemap.set(product.id, canonicalId);
+  });
+
+  const inventoryKey = (item: InventoryItem) =>
+    item.source === 'generic'
+      ? `generic:${item.ingredientId}`
+      : `product:${item.productId ?? item.privateProductId ?? item.id}`;
+  const inventory = new Map(account.inventory.map((item) => [inventoryKey(item), item]));
   let availabilityConflictCount = 0;
   let inventoryAdded = 0;
-  guest.inventory.forEach((item) => {
-    const key = `${item.source}:${item.ingredientId}`;
+  guest.inventory.forEach((rawItem) => {
+    const privateProductId = rawItem.privateProductId
+      ? guestPrivateProductIdRemap.get(rawItem.privateProductId) ?? rawItem.privateProductId
+      : undefined;
+    const canonicalPrivateProduct = privateProductId ? privateProducts.get(privateProductId) : undefined;
+    const item = privateProductId
+      ? {
+          ...rawItem,
+          privateProductId,
+          ...(canonicalPrivateProduct
+            ? { ingredientId: canonicalPrivateProduct.ingredientId }
+            : {}),
+        }
+      : rawItem;
+    const key = inventoryKey(item);
     const existing = inventory.get(key);
     if (!existing) {
       inventory.set(key, item);
@@ -363,6 +610,45 @@ export function mergeGuestIntoAccount(
     if (!sessions.has(session.id)) sessions.set(session.id, session);
   });
 
+  const productSubmissions = new Map(
+    account.productSubmissions.map((submission) => [submission.privateProductId, submission]),
+  );
+  const submissionRank: Record<ProductSubmissionStatus, number> = {
+    draft: 0,
+    submitted: 1,
+    processing: 2,
+    pending_review: 3,
+    approved: 4,
+    merged: 4,
+    rejected: 4,
+  };
+  const usedSubmissionIds = new Set(account.productSubmissions.map((submission) => submission.id));
+  guest.productSubmissions.forEach((submission) => {
+    const privateProductId =
+      guestPrivateProductIdRemap.get(submission.privateProductId) ?? submission.privateProductId;
+    const existing = productSubmissions.get(privateProductId);
+    const shouldReplace = !existing ||
+      submissionRank[submission.status] > submissionRank[existing.status] ||
+      (
+        submissionRank[submission.status] === submissionRank[existing.status] &&
+        Date.parse(submission.updatedAt) > Date.parse(existing.updatedAt)
+      );
+    if (!shouldReplace) return;
+    if (existing) usedSubmissionIds.delete(existing.id);
+    let submissionId = submission.id;
+    let collisionIndex = 1;
+    while (usedSubmissionIds.has(submissionId)) {
+      submissionId = `${submission.id}-guest-${collisionIndex}`;
+      collisionIndex += 1;
+    }
+    productSubmissions.set(privateProductId, {
+      ...submission,
+      id: submissionId,
+      privateProductId,
+    });
+    usedSubmissionIds.add(submissionId);
+  });
+
   return {
     snapshot: {
       ...account,
@@ -379,6 +665,11 @@ export function mergeGuestIntoAccount(
       shoppingItems: [...shopping.values()],
       tastePreferences: useGuestPreferences ? guest.tastePreferences : account.tastePreferences,
       makeSessions: [...sessions.values()],
+      privateProducts: [...privateProducts.values()],
+      productSubmissions: [...productSubmissions.values()],
+      completedScanOperationIds: [
+        ...new Set([...account.completedScanOperationIds, ...guest.completedScanOperationIds]),
+      ].slice(-100),
       completedGuestImportIds: [...account.completedGuestImportIds, importId],
       hasOnboarded: account.hasOnboarded || guest.hasOnboarded,
     },

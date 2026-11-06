@@ -23,6 +23,9 @@ export default function RootLayout() {
           <Stack.Screen name="setup" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="preferences" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="shopping" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="catalogue" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="product/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
           <Stack.Screen name="recipe/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="make/[sessionId]" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />

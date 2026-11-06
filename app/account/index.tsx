@@ -8,7 +8,11 @@ import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { accountProfile, importState, retryGuestImport, signOut, resetGuest } = useBar();
+  const { snapshot, accountProfile, importState, retryGuestImport, signOut, resetGuest } = useBar();
+  const sharedSubmissions = snapshot.productSubmissions.filter((submission) => submission.shareConsent);
+  const pendingReviewCount = sharedSubmissions.filter(
+    (submission) => submission.status === 'pending_review',
+  ).length;
 
   const confirmGuestReset = () => {
     Alert.alert(
@@ -95,6 +99,23 @@ export default function AccountScreen() {
           </View>
         )}
 
+        <View style={styles.catalogueSection}>
+          <View style={styles.catalogueHeader}>
+            <View style={styles.catalogueCopy}>
+              <Text style={styles.dataTitle}>Catalogue review preview</Text>
+              <Text style={styles.dataBody}>
+                Inspect locally simulated product submissions and exercise approval decisions. Nothing is published or shared.
+              </Text>
+            </View>
+            {pendingReviewCount ? <InlinePill label={`${pendingReviewCount} pending`} tone="attention" /> : null}
+          </View>
+          <Button
+            label={sharedSubmissions.length ? 'Open catalogue review' : 'Open empty review queue'}
+            variant="secondary"
+            onPress={() => router.push('/catalogue' as never)}
+          />
+        </View>
+
         <View style={styles.dataSection}>
           <Text style={styles.dataTitle}>Guest data on this device</Text>
           <Text style={styles.dataBody}>Use this when you want to repeat onboarding from a clean local state.</Text>
@@ -129,6 +150,9 @@ const styles = StyleSheet.create({
   importBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   importError: { color: colors.alert, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   actions: { gap: spacing.sm, marginTop: spacing.xxxl },
+  catalogueSection: { gap: spacing.lg, marginTop: spacing.huge, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
+  catalogueHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  catalogueCopy: { flex: 1 },
   dataSection: { gap: spacing.md, marginTop: spacing.huge, paddingTop: spacing.xl, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   dataTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 20 },
   dataBody: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },

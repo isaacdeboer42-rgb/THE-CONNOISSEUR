@@ -155,7 +155,11 @@ export default function TonightScreen() {
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [quickPick, setQuickPick] = useState<MatchResult>();
   const [quickEmpty, setQuickEmpty] = useState(false);
-  const inventoryCount = snapshot.inventory.filter((item) => item.status === 'onHand').length;
+  const inventoryCount = new Set(
+    snapshot.inventory
+      .filter((item) => item.status === 'onHand')
+      .map((item) => item.ingredientId),
+  ).size;
   const ready = recommendations.filter((match) => match.category === 'ready' || match.category === 'readyWithSubstitution');
   const nearly = recommendations.filter((match) => match.category === 'oneAway');
   const explore = recommendations.filter((match) => match.category === 'moreToExplore');
@@ -237,14 +241,24 @@ export default function TonightScreen() {
             <Text style={styles.barValue}>{inventoryCount} {inventoryCount === 1 ? 'ingredient' : 'ingredients'} on hand</Text>
             <Text style={styles.barMeta}>{ready.length} ready now · {nearly.length} nearly there</Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add an ingredient"
-            onPress={() => setIngredientModalOpen(true)}
-            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.addButtonText}>＋ Add</Text>
-          </Pressable>
+          <View style={styles.barActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Scan a bottle"
+              onPress={() => router.push('/scan' as never)}
+              style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.scanButtonText}>⌁ Scan</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add an ingredient"
+              onPress={() => setIngredientModalOpen(true)}
+              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.addButtonText}>＋ Add</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.preferenceSection}>
@@ -297,8 +311,13 @@ export default function TonightScreen() {
           <EmptyState
             glyph="◇"
             title="Your first recommendation starts with one ingredient"
-            body="Add what is closest to hand. You do not need to catalogue the whole shelf before seeing useful matches."
-            action={<Button label="Build my bar" onPress={() => router.push('/setup')} />}
+            body="Scan a demo bottle or add what is closest to hand. You do not need to catalogue the whole shelf before seeing useful matches."
+            action={(
+              <View style={styles.emptyActions}>
+                <Button label="Scan a bottle" onPress={() => router.push('/scan' as never)} />
+                <Button label="Add manually" variant="secondary" onPress={() => router.push('/setup')} />
+              </View>
+            )}
           />
         ) : (
           <>
@@ -411,6 +430,9 @@ const styles = StyleSheet.create({
   barLabel: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.4 },
   barValue: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 14, marginTop: 5 },
   barMeta: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  barActions: { gap: spacing.sm, alignItems: 'stretch' },
+  scanButton: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: 'rgba(215,170,98,0.34)', alignItems: 'center', justifyContent: 'center' },
+  scanButtonText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   addButton: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: colors.brassSoft, alignItems: 'center', justifyContent: 'center' },
   addButtonText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   preferenceSection: { marginTop: spacing.xl, marginBottom: spacing.xxxl },
@@ -428,6 +450,7 @@ const styles = StyleSheet.create({
   accountBannerCopy: { gap: 4 },
   accountBannerTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 21 },
   accountBannerBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
+  emptyActions: { width: '100%', gap: spacing.sm },
   sectionGap: { marginBottom: spacing.lg },
   sectionCount: { color: colors.paperDim, fontFamily: fonts.display, fontSize: 25 },
   quickSelect: { minHeight: 78, marginTop: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(215,170,98,0.2)', backgroundColor: colors.surfaceWarm, padding: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md },

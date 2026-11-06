@@ -4,13 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, EmptyState, Eyebrow, Screen, ScreenScroll, SectionHeading } from '@/components/ui';
 import { ingredientById } from '@/data/catalog';
+import { verifiedProductById } from '@/data/products';
 import { BasicId } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export default function MyBarScreen() {
   const router = useRouter();
-  const { snapshot, mode, removeIngredient, setInventoryStatus } = useBar();
+  const { snapshot, mode, removeInventoryItem, setInventoryItemStatus } = useBar();
   const onHand = snapshot.inventory.filter((item) => item.status === 'onHand');
   const outOfStock = snapshot.inventory.filter((item) => item.status === 'outOfStock');
   const iceBasics: Array<{ id: BasicId; label: string; glyph: string; description: string }> = [
@@ -37,7 +38,10 @@ export default function MyBarScreen() {
             <Eyebrow>Inventory</Eyebrow>
             <Text accessibilityRole="header" style={styles.title}>My bar</Text>
           </View>
-          <Button label="＋ Add" variant="secondary" onPress={() => router.push('/setup')} style={styles.addButton} />
+          <View style={styles.headerActions}>
+            <Button label="Scan bottle" variant="secondary" onPress={() => router.push('/scan' as never)} style={styles.addButton} />
+            <Button label="＋ Add" variant="ghost" onPress={() => router.push('/setup')} style={styles.addButton} />
+          </View>
         </View>
 
         <View style={styles.utilityRow}>
@@ -57,8 +61,13 @@ export default function MyBarScreen() {
           <EmptyState
             glyph="▥"
             title="An empty shelf is still a starting point"
-            body="Add one spirit, sweetener or citrus and recommendations will begin to take shape."
-            action={<Button label="Add my first ingredient" onPress={() => router.push('/setup')} />}
+            body="Scan a demo bottle or add one spirit, sweetener or citrus manually and recommendations will begin to take shape."
+            action={(
+              <View style={styles.emptyActions}>
+                <Button label="Scan a bottle" onPress={() => router.push('/scan' as never)} />
+                <Button label="Add manually" variant="secondary" onPress={() => router.push('/setup')} />
+              </View>
+            )}
           />
         ) : (
           <>
@@ -78,30 +87,58 @@ export default function MyBarScreen() {
             </View>
 
             <View style={styles.section}>
-              <SectionHeading eyebrow="Ingredients view" title="What your bottles supply" />
+              <SectionHeading eyebrow="Bottles & ingredients" title="What your bar supplies" />
               {onHand.length === 0 ? (
                 <Text style={styles.stockNotice}>Nothing is currently on hand. Restock an ingredient below to bring matching recipes back.</Text>
               ) : null}
               <View style={styles.list}>
                 {snapshot.inventory.map((item) => {
                   const ingredient = ingredientById[item.ingredientId];
+                  const verifiedProduct = item.productId ? verifiedProductById[item.productId] : undefined;
+                  const privateProduct = item.privateProductId
+                    ? snapshot.privateProducts.find((product) => product.id === item.privateProductId)
+                    : undefined;
                   const isOutOfStock = item.status === 'outOfStock';
+                  const bottle = verifiedProduct ?? privateProduct;
+                  const displayName = bottle?.name ?? ingredient.name;
+                  const sourceLabel = verifiedProduct
+                    ? `${verifiedProduct.brand} · ${verifiedProduct.bottleSizeMl} ml · verified fixture`
+                    : privateProduct
+                      ? `${privateProduct.brand || 'Private bottle'}${privateProduct.bottleSizeMl ? ` · ${privateProduct.bottleSizeMl} ml` : ''} · private entry`
+                      : 'Generic ingredient';
                   return (
                     <View key={item.id} style={[styles.row, isOutOfStock && styles.rowOutOfStock]}>
                       <View style={[styles.initial, isOutOfStock && styles.initialOutOfStock]}>
-                        <Text style={[styles.initialText, isOutOfStock && styles.initialTextOutOfStock]}>{ingredient.shortName.charAt(0)}</Text>
+                        <Text style={[styles.initialText, isOutOfStock && styles.initialTextOutOfStock]}>{displayName.charAt(0)}</Text>
                       </View>
                       <View style={styles.rowCopy}>
-                        <Text style={styles.rowName}>{ingredient.name}</Text>
+                        <View style={styles.rowTitleLine}>
+                          <Text style={styles.rowName}>{displayName}</Text>
+                          {bottle ? <Text style={styles.productBadge}>{verifiedProduct ? 'VERIFIED' : 'PRIVATE'}</Text> : null}
+                        </View>
                         <Text style={styles.rowCategory}>
-                          {ingredient.category} · {isOutOfStock ? 'Out of stock' : 'On hand'}
+                          {sourceLabel}
+                        </Text>
+                        <Text style={styles.rowMapping}>
+                          Maps to {ingredient.shortName} · {isOutOfStock ? 'Out of stock' : 'On hand'}
+                          {bottle?.barcode ? ` · ${bottle.barcode}` : ''}
                         </Text>
                       </View>
                       <View style={styles.rowActions}>
+                        {privateProduct ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Edit ${displayName}`}
+                            onPress={() => router.push(`/product/${privateProduct.id}` as never)}
+                            style={styles.editButton}
+                          >
+                            <Text style={styles.editButtonText}>Edit</Text>
+                          </Pressable>
+                        ) : null}
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={isOutOfStock ? `Restock ${ingredient.name}` : `Mark ${ingredient.name} out of stock`}
-                          onPress={() => setInventoryStatus(item.ingredientId, isOutOfStock ? 'onHand' : 'outOfStock')}
+                          accessibilityLabel={isOutOfStock ? `Restock ${displayName}` : `Mark ${displayName} out of stock`}
+                          onPress={() => setInventoryItemStatus(item.id, isOutOfStock ? 'onHand' : 'outOfStock')}
                           style={[styles.stockButton, isOutOfStock && styles.restockButton]}
                         >
                           <Text style={[styles.stockButtonText, isOutOfStock && styles.restockButtonText]}>
@@ -110,8 +147,8 @@ export default function MyBarScreen() {
                         </Pressable>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`Remove ${ingredient.name}`}
-                          onPress={() => removeIngredient(item.ingredientId)}
+                          accessibilityLabel={`Remove ${displayName}`}
+                          onPress={() => removeInventoryItem(item.id)}
                           style={styles.removeButton}
                         >
                           <Text style={styles.remove}>Remove</Text>
@@ -152,6 +189,7 @@ export default function MyBarScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.md, marginBottom: spacing.xxl },
   title: { color: colors.paper, fontFamily: fonts.display, fontSize: 38, marginTop: 3 },
+  headerActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.sm, flexShrink: 1 },
   addButton: { minHeight: 44, paddingHorizontal: spacing.lg },
   utilityRow: { flexDirection: 'row', gap: spacing.sm, marginTop: -spacing.md, marginBottom: spacing.xl },
   utilityButton: { flex: 1, minHeight: 44, paddingHorizontal: spacing.sm },
@@ -162,19 +200,25 @@ const styles = StyleSheet.create({
   summaryCard: { flexGrow: 1, flexBasis: 150, minHeight: 110, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.lg, justifyContent: 'flex-end' },
   summaryValue: { color: colors.paper, fontFamily: fonts.display, fontSize: 34 },
   summaryLabel: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  emptyActions: { width: '100%', gap: spacing.sm },
   section: { marginTop: spacing.huge, gap: spacing.lg },
   stockNotice: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   list: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
-  row: { minHeight: 88, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider, paddingVertical: spacing.sm },
+  row: { minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider, paddingVertical: spacing.md },
   rowOutOfStock: { opacity: 0.82 },
   initial: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brassSoft, alignItems: 'center', justifyContent: 'center' },
   initialOutOfStock: { backgroundColor: colors.surfaceSoft },
   initialText: { color: colors.brass, fontFamily: fonts.display, fontSize: 18 },
   initialTextOutOfStock: { color: colors.paperDim },
-  rowCopy: { flex: 1 },
+  rowCopy: { flex: 1, minWidth: 120 },
+  rowTitleLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   rowName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
   rowCategory: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  rowMapping: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  productBadge: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.8 },
   rowActions: { alignItems: 'stretch', gap: 4 },
+  editButton: { minHeight: 44, minWidth: 88, borderRadius: radius.pill, borderWidth: 1, borderColor: 'rgba(215,170,98,0.34)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
+  editButtonText: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11 },
   stockButton: { minHeight: 44, minWidth: 88, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
   restockButton: { borderColor: 'rgba(169,214,141,0.4)', backgroundColor: colors.readyDeep },
   stockButtonText: { color: colors.paperMuted, fontFamily: fonts.bodyMedium, fontSize: 11 },

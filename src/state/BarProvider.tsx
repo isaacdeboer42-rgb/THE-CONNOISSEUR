@@ -7,9 +7,11 @@ import React, {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
 } from 'react';
 
 import { ingredientById, recipeById, recipes } from '@/data/catalog';
+import { verifiedProductById } from '@/data/products';
 import { getRecommendations } from '@/domain/matching';
 import { SAMPLE_INGREDIENT_IDS, STARTER_INGREDIENT_IDS } from '@/domain/onboarding';
 import {
@@ -19,6 +21,17 @@ import {
   normalizePersistedAppData,
   PersistedAppDataV2,
 } from '@/domain/persistence';
+import {
+  addPrivateProductToSnapshot,
+  addVerifiedProductToSnapshot,
+  ProductAddStatus,
+  ProductOverlapMode,
+  VerifiedProductScanMetadata,
+  setProductSubmissionProcessingErrorInSnapshot,
+  setProductSubmissionStatusInSnapshot,
+  submitPrivateProductInSnapshot,
+  updatePrivateProductInSnapshot,
+} from '@/domain/productInventory';
 import { selectQuickRecipe } from '@/domain/quickSelect';
 import { getPurchaseSuggestions } from '@/domain/shopping';
 import {
@@ -31,6 +44,9 @@ import {
   InventoryItem,
   MakeSession,
   MatchResult,
+  NewPrivateProductInput,
+  PrivateProductUpdateInput,
+  ProductSubmissionStatus,
   PurchaseSuggestion,
   RecipeId,
   StapleState,
@@ -65,11 +81,50 @@ type SnapshotAction =
   | { type: 'addIngredient'; ingredientId: IngredientId; addedAt: string }
   | { type: 'addStarter'; addedAt: string }
   | { type: 'removeIngredient'; ingredientId: IngredientId }
+  | { type: 'removeInventoryItem'; itemId: string }
   | {
-      type: 'setInventoryStatus';
-      ingredientId: IngredientId;
+      type: 'setInventoryItemStatus';
+      itemId: string;
       status: InventoryItem['status'];
       updatedAt: string;
+    }
+  | {
+      type: 'addVerifiedProduct';
+      productId: string;
+      operationId: string;
+      overlapMode: ProductOverlapMode;
+      timestamp: string;
+      scanMetadata?: VerifiedProductScanMetadata;
+    }
+  | {
+      type: 'addPrivateProduct';
+      input: NewPrivateProductInput;
+      operationId: string;
+      timestamp: string;
+    }
+  | {
+      type: 'submitPrivateProduct';
+      privateProductId: string;
+      submissionId: string;
+      timestamp: string;
+    }
+  | {
+      type: 'updatePrivateProduct';
+      privateProductId: string;
+      input: PrivateProductUpdateInput;
+      timestamp: string;
+    }
+  | {
+      type: 'setProductSubmissionStatus';
+      submissionId: string;
+      status: ProductSubmissionStatus;
+      timestamp: string;
+    }
+  | {
+      type: 'setProductSubmissionError';
+      submissionId: string;
+      error: string;
+      timestamp: string;
     }
   | { type: 'setBasic'; basicId: BasicId; value: StapleState }
   | { type: 'setOnboarded'; value: boolean }
@@ -142,6 +197,17 @@ function cloneSnapshot(snapshot: BarSnapshot): BarSnapshot {
     },
     quickSelectHistory: snapshot.quickSelectHistory.map((item) => ({ ...item })),
     makeSessions: snapshot.makeSessions.map((session) => ({ ...session })),
+    privateProducts: snapshot.privateProducts.map((product) => ({ ...product })),
+    productSubmissions: snapshot.productSubmissions.map((submission) => ({
+      ...submission,
+      ...(submission.submittedFields
+        ? { submittedFields: { ...submission.submittedFields } }
+        : {}),
+      ...(submission.extractedFields
+        ? { extractedFields: { ...submission.extractedFields } }
+        : {}),
+    })),
+    completedScanOperationIds: [...snapshot.completedScanOperationIds],
     completedGuestImportIds: [...snapshot.completedGuestImportIds],
   };
 }
@@ -149,7 +215,9 @@ function cloneSnapshot(snapshot: BarSnapshot): BarSnapshot {
 function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnapshot {
   switch (action.type) {
     case 'addIngredient': {
-      const existing = snapshot.inventory.find((item) => item.ingredientId === action.ingredientId);
+      const existing = snapshot.inventory.find(
+        (item) => item.source === 'generic' && item.ingredientId === action.ingredientId,
+      );
       const inventory = existing
         ? snapshot.inventory.map((item) =>
             item.id === existing.id
@@ -176,31 +244,112 @@ function mutateSnapshot(snapshot: BarSnapshot, action: SnapshotAction): BarSnaps
         snapshot,
       );
     }
-    case 'removeIngredient':
+    case 'removeIngredient': {
+      const inventory = snapshot.inventory.filter(
+        (item) => !(item.source === 'generic' && item.ingredientId === action.ingredientId),
+      );
+      const remainsOnHand = inventory.some(
+        (item) => item.ingredientId === action.ingredientId && item.status === 'onHand',
+      );
       return {
         ...snapshot,
-        inventory: snapshot.inventory.filter((item) => item.ingredientId !== action.ingredientId),
+        inventory,
         shoppingItems: snapshot.shoppingItems.map((item) =>
-          item.ingredientId === action.ingredientId ? { ...item, ownedAt: undefined } : item,
-        ),
-      };
-    case 'setInventoryStatus':
-      return {
-        ...snapshot,
-        inventory: snapshot.inventory.map((item) =>
-          item.ingredientId === action.ingredientId
-            ? { ...item, status: action.status, revision: item.revision + 1 }
+          item.ingredientId === action.ingredientId && !remainsOnHand
+            ? { ...item, ownedAt: undefined }
             : item,
         ),
+      };
+    }
+    case 'removeInventoryItem': {
+      const removed = snapshot.inventory.find((item) => item.id === action.itemId);
+      if (!removed) return snapshot;
+      const inventory = snapshot.inventory.filter((item) => item.id !== action.itemId);
+      const remainsOnHand = inventory.some(
+        (item) => item.ingredientId === removed.ingredientId && item.status === 'onHand',
+      );
+      return {
+        ...snapshot,
+        inventory,
         shoppingItems: snapshot.shoppingItems.map((item) =>
-          item.ingredientId === action.ingredientId
+          item.ingredientId === removed.ingredientId && !remainsOnHand
+            ? { ...item, ownedAt: undefined }
+            : item,
+        ),
+      };
+    }
+    case 'setInventoryItemStatus': {
+      const target = snapshot.inventory.find((item) => item.id === action.itemId);
+      if (!target) return snapshot;
+      const inventory = snapshot.inventory.map((item) =>
+        item.id === action.itemId
+          ? { ...item, status: action.status, revision: item.revision + 1 }
+          : item,
+      );
+      const remainsOnHand = inventory.some(
+        (item) => item.ingredientId === target.ingredientId && item.status === 'onHand',
+      );
+      return {
+        ...snapshot,
+        inventory,
+        shoppingItems: snapshot.shoppingItems.map((item) =>
+          item.ingredientId === target.ingredientId
             ? {
                 ...item,
-                ownedAt: action.status === 'onHand' ? action.updatedAt : undefined,
+                ownedAt: remainsOnHand ? item.ownedAt ?? action.updatedAt : undefined,
               }
             : item,
         ),
       };
+    }
+    case 'addVerifiedProduct': {
+      const product = verifiedProductById[action.productId];
+      return product
+        ? addVerifiedProductToSnapshot(
+            snapshot,
+            product,
+            action.operationId,
+            action.overlapMode,
+            action.timestamp,
+            action.scanMetadata,
+          ).snapshot
+        : snapshot;
+    }
+    case 'addPrivateProduct':
+      return addPrivateProductToSnapshot(
+        snapshot,
+        action.input,
+        action.operationId,
+        action.timestamp,
+      ).snapshot;
+    case 'submitPrivateProduct':
+      return submitPrivateProductInSnapshot(
+        snapshot,
+        action.privateProductId,
+        action.submissionId,
+        action.timestamp,
+      );
+    case 'updatePrivateProduct':
+      return updatePrivateProductInSnapshot(
+        snapshot,
+        action.privateProductId,
+        action.input,
+        action.timestamp,
+      );
+    case 'setProductSubmissionStatus':
+      return setProductSubmissionStatusInSnapshot(
+        snapshot,
+        action.submissionId,
+        action.status,
+        action.timestamp,
+      );
+    case 'setProductSubmissionError':
+      return setProductSubmissionProcessingErrorInSnapshot(
+        snapshot,
+        action.submissionId,
+        action.error,
+        action.timestamp,
+      );
     case 'setBasic':
       return { ...snapshot, basics: { ...snapshot.basics, [action.basicId]: action.value } };
     case 'setOnboarded':
@@ -329,6 +478,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'mutate': {
       const before = cloneSnapshot(snapshotForMode(state, action.mode));
       const after = mutateSnapshot(before, action.operation);
+      if (after === before) return state;
       const updated = withSnapshot(state, action.mode, after);
       return {
         ...updated,
@@ -405,6 +555,12 @@ export interface AccountActionResult {
   error?: string;
 }
 
+export interface ScanAddActionResult {
+  status: ProductAddStatus;
+  itemId?: string;
+  privateProductId?: string;
+}
+
 interface BarContextValue {
   hydration: AppState['hydration'];
   hydrationError?: string;
@@ -421,7 +577,25 @@ interface BarContextValue {
   addIngredient: (ingredientId: IngredientId) => void;
   addStarter: () => void;
   removeIngredient: (ingredientId: IngredientId) => void;
-  setInventoryStatus: (ingredientId: IngredientId, status: InventoryItem['status']) => void;
+  removeInventoryItem: (itemId: string) => void;
+  setInventoryItemStatus: (itemId: string, status: InventoryItem['status']) => void;
+  addVerifiedProduct: (
+    productId: string,
+    operationId: string,
+    overlapMode: ProductOverlapMode,
+    scanMetadata?: VerifiedProductScanMetadata,
+  ) => ScanAddActionResult;
+  addPrivateProduct: (
+    input: NewPrivateProductInput,
+    operationId: string,
+  ) => ScanAddActionResult;
+  submitPrivateProduct: (privateProductId: string) => string;
+  updatePrivateProduct: (privateProductId: string, input: PrivateProductUpdateInput) => void;
+  advanceProductSubmission: (submissionId: string, simulateFailure?: boolean) => Promise<void>;
+  reviewProductSubmission: (
+    submissionId: string,
+    status: Extract<ProductSubmissionStatus, 'approved' | 'merged' | 'rejected'>,
+  ) => void;
   setBasic: (basicId: BasicId, value: StapleState) => void;
   completeOnboarding: () => void;
   toggleSaved: (recipeId: RecipeId) => void;
@@ -463,6 +637,7 @@ export function BarProvider({ children }: PropsWithChildren) {
     signedIn: false,
     importState: { status: 'idle' },
   });
+  const scanOperationResults = useRef(new Map<string, ScanAddActionResult>());
 
   useEffect(() => {
     let active = true;
@@ -569,18 +744,168 @@ export function BarProvider({ children }: PropsWithChildren) {
         ),
       removeIngredient: (ingredientId) =>
         mutate({ type: 'removeIngredient', ingredientId }, 'Ingredient removed', true),
-      setInventoryStatus: (ingredientId, status) =>
+      removeInventoryItem: (itemId) => {
+        const item = snapshot.inventory.find((candidate) => candidate.id === itemId);
+        mutate(
+          { type: 'removeInventoryItem', itemId },
+          item ? `${ingredientById[item.ingredientId].shortName} removed` : 'Inventory item removed',
+          true,
+        );
+      },
+      setInventoryItemStatus: (itemId, status) => {
+        const item = snapshot.inventory.find((candidate) => candidate.id === itemId);
+        if (!item) return;
         mutate(
           {
-            type: 'setInventoryStatus',
-            ingredientId,
+            type: 'setInventoryItemStatus',
+            itemId,
             status,
             updatedAt: new Date().toISOString(),
           },
           status === 'onHand'
-            ? `${ingredientById[ingredientId].shortName} is back on hand`
-            : `${ingredientById[ingredientId].shortName} marked out of stock`,
+            ? `${ingredientById[item.ingredientId].shortName} is back on hand`
+            : `${ingredientById[item.ingredientId].shortName} marked out of stock`,
           true,
+        );
+      },
+      addVerifiedProduct: (productId, operationId, overlapMode, scanMetadata) => {
+        const priorResult = scanOperationResults.current.get(operationId);
+        if (priorResult) return priorResult;
+        const product = verifiedProductById[productId];
+        if (!product) throw new Error('The verified product fixture is unavailable.');
+        const timestamp = new Date().toISOString();
+        const result = addVerifiedProductToSnapshot(
+          snapshot,
+          product,
+          operationId,
+          overlapMode,
+          timestamp,
+          scanMetadata,
+        );
+        const message =
+          result.status === 'added'
+            ? `${product.name} added to your bar`
+            : result.status === 'restocked'
+              ? `${product.name} is back on hand`
+              : result.status === 'duplicate'
+                ? `${product.name} is already on hand`
+                : 'This scan operation was already completed';
+        const publicResult = {
+          status: result.status,
+          itemId: result.itemId,
+        };
+        scanOperationResults.current.set(operationId, publicResult);
+        if (scanOperationResults.current.size > 100) {
+          const oldest = scanOperationResults.current.keys().next().value;
+          if (oldest) scanOperationResults.current.delete(oldest);
+        }
+        mutate(
+          { type: 'addVerifiedProduct', productId, operationId, overlapMode, timestamp, scanMetadata },
+          message,
+          result.status === 'added' || result.status === 'restocked',
+        );
+        return publicResult;
+      },
+      addPrivateProduct: (input, operationId) => {
+        const priorResult = scanOperationResults.current.get(operationId);
+        if (priorResult) return priorResult;
+        const timestamp = new Date().toISOString();
+        const result = addPrivateProductToSnapshot(snapshot, input, operationId, timestamp);
+        const message =
+          result.status === 'added'
+            ? `${input.name} saved privately in your bar`
+            : result.status === 'restocked'
+              ? `${input.name} is back on hand`
+              : result.status === 'duplicate'
+                ? `${input.name} is already on hand`
+                : 'This scan operation was already completed';
+        const publicResult = {
+          status: result.status,
+          itemId: result.itemId,
+          privateProductId: result.privateProductId,
+        };
+        scanOperationResults.current.set(operationId, publicResult);
+        if (scanOperationResults.current.size > 100) {
+          const oldest = scanOperationResults.current.keys().next().value;
+          if (oldest) scanOperationResults.current.delete(oldest);
+        }
+        mutate(
+          { type: 'addPrivateProduct', input, operationId, timestamp },
+          message,
+          result.status === 'added' || result.status === 'restocked',
+        );
+        return publicResult;
+      },
+      submitPrivateProduct: (privateProductId) => {
+        const product = snapshot.privateProducts.find((item) => item.id === privateProductId);
+        if (!product) throw new Error('The private bottle is no longer available. Save it again before sharing.');
+        const existing = snapshot.productSubmissions.find(
+          (submission) => submission.privateProductId === privateProductId,
+        );
+        if (existing && existing.status !== 'draft') return existing.id;
+        const submissionId = existing?.id ?? id('submission');
+        mutate(
+          {
+            type: 'submitPrivateProduct',
+            privateProductId,
+            submissionId,
+            timestamp: new Date().toISOString(),
+          },
+          'Private bottle opted into local catalogue-review simulation',
+        );
+        return submissionId;
+      },
+      updatePrivateProduct: (privateProductId, input) =>
+        mutate(
+          {
+            type: 'updatePrivateProduct',
+            privateProductId,
+            input,
+            timestamp: new Date().toISOString(),
+          },
+          `${input.name.trim()} updated privately`,
+          true,
+        ),
+      advanceProductSubmission: async (submissionId, simulateFailure = false) => {
+        mutate({
+          type: 'setProductSubmissionStatus',
+          submissionId,
+          status: 'processing',
+          timestamp: new Date().toISOString(),
+        });
+        await new Promise<void>((resolve) => setTimeout(resolve, 650));
+        if (simulateFailure) {
+          const error = 'Simulated extraction failed. Your private bottle is still saved and usable.';
+          mutate(
+            {
+              type: 'setProductSubmissionError',
+              submissionId,
+              error,
+              timestamp: new Date().toISOString(),
+            },
+            'Simulated extraction paused; retry when ready',
+          );
+          throw new Error(error);
+        }
+        mutate(
+          {
+            type: 'setProductSubmissionStatus',
+            submissionId,
+            status: 'pending_review',
+            timestamp: new Date().toISOString(),
+          },
+          'Simulated extraction complete; catalogue review is pending',
+        );
+      },
+      reviewProductSubmission: (submissionId, status) =>
+        mutate(
+          {
+            type: 'setProductSubmissionStatus',
+            submissionId,
+            status,
+            timestamp: new Date().toISOString(),
+          },
+          `Local review marked ${status.replace('_', ' ')}`,
         ),
       setBasic: (basicId, basicState) =>
         mutate(

@@ -66,8 +66,16 @@ export default function SetupScreen() {
     completeOnboarding,
   } = useBar();
 
-  const inventoryIds = new Set(snapshot.inventory.filter((item) => item.status === 'onHand').map((item) => item.ingredientId));
-  const outOfStockIds = new Set(snapshot.inventory.filter((item) => item.status === 'outOfStock').map((item) => item.ingredientId));
+  const inventoryIds = new Set(
+    snapshot.inventory
+      .filter((item) => item.source === 'generic' && item.status === 'onHand')
+      .map((item) => item.ingredientId),
+  );
+  const outOfStockIds = new Set(
+    snapshot.inventory
+      .filter((item) => item.source === 'generic' && item.status === 'outOfStock')
+      .map((item) => item.ingredientId),
+  );
   const selectable = useMemo(
     () =>
       ingredients.filter((ingredient) => {

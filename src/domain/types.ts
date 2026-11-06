@@ -1,5 +1,6 @@
 export type IngredientId =
   | 'bourbon'
+  | 'vodka'
   | 'simple-syrup'
   | 'egg-white'
   | 'lemon-juice'
@@ -12,7 +13,7 @@ export type IngredientId =
 
 export type BasicId = 'standard-ice' | 'large-ice';
 
-export type RecipeId = 'whiskey-sour' | 'old-fashioned' | 'bourbon-smash';
+export type RecipeId = 'whiskey-sour' | 'old-fashioned' | 'bourbon-smash' | 'vodka-sour';
 
 export type StapleState = 'available' | 'unavailable' | 'unknown';
 
@@ -47,8 +48,81 @@ export interface InventoryItem {
   ingredientId: IngredientId;
   status: 'onHand' | 'outOfStock';
   source: 'generic' | 'product';
+  productId?: string;
+  privateProductId?: string;
+  scannedBarcodeOriginal?: string;
+  scannedBarcodeSymbology?: BarcodeSymbology;
   addedAt: string;
   revision: number;
+}
+
+export type BarcodeSymbology = 'ean13' | 'upca';
+
+export interface VerifiedProduct {
+  id: string;
+  barcode: string;
+  originalBarcode?: string;
+  name: string;
+  brand: string;
+  ingredientId: IngredientId;
+  bottleSizeMl: number;
+  status: 'verified';
+}
+
+export interface PrivateProduct {
+  id: string;
+  barcode: string;
+  originalBarcode: string;
+  symbology: BarcodeSymbology;
+  name: string;
+  brand?: string;
+  ingredientId: IngredientId;
+  bottleSizeMl?: number;
+  labelPhotoUri?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewPrivateProductInput {
+  barcode: string;
+  originalBarcode: string;
+  symbology: BarcodeSymbology;
+  name: string;
+  brand?: string;
+  ingredientId: IngredientId;
+  bottleSizeMl?: number;
+  labelPhotoUri?: string;
+}
+
+export interface PrivateProductUpdateInput {
+  name: string;
+  brand?: string;
+  ingredientId: IngredientId;
+  bottleSizeMl?: number;
+  labelPhotoUri?: string;
+}
+
+export type ProductSubmissionStatus =
+  | 'draft'
+  | 'submitted'
+  | 'processing'
+  | 'pending_review'
+  | 'approved'
+  | 'merged'
+  | 'rejected';
+
+export interface ProductSubmission {
+  id: string;
+  privateProductId: string;
+  status: ProductSubmissionStatus;
+  shareConsent: boolean;
+  createdAt: string;
+  updatedAt: string;
+  submittedFields?: Pick<PrivateProduct, 'name' | 'brand' | 'ingredientId' | 'bottleSizeMl'>;
+  extractedFields?: Partial<Pick<PrivateProduct, 'name' | 'brand' | 'ingredientId' | 'bottleSizeMl'>>;
+  sourcePhotoUri?: string;
+  modelId?: string;
+  processingError?: string;
 }
 
 export type MeasurementUnit = 'ml' | 'dash' | 'piece' | 'leaf' | 'egg' | 'scoop';
@@ -164,6 +238,9 @@ export interface BarSnapshot {
   sessionPreferences: SessionPreferences;
   quickSelectHistory: QuickSelectHistoryItem[];
   makeSessions: MakeSession[];
+  privateProducts: PrivateProduct[];
+  productSubmissions: ProductSubmission[];
+  completedScanOperationIds: string[];
   completedGuestImportIds: string[];
   hasOnboarded: boolean;
 }
