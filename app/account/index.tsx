@@ -116,6 +116,14 @@ export default function AccountScreen() {
           />
         </View>
 
+        <View style={styles.catalogueSection}>
+          <View style={styles.catalogueCopy}>
+            <Text style={styles.dataTitle}>About, privacy & release status</Text>
+            <Text style={styles.dataBody}>See exactly what remains local, what is not connected, and what production launch still requires.</Text>
+          </View>
+          <Button label="Open release information" variant="secondary" onPress={() => router.push('/about' as never)} />
+        </View>
+
         <View style={styles.dataSection}>
           <Text style={styles.dataTitle}>Guest data on this device</Text>
           <Text style={styles.dataBody}>Use this when you want to repeat onboarding from a clean local state.</Text>

@@ -2,7 +2,7 @@
 
 A polished Expo/React Native vertical slice for discovering cocktails from the ingredients already in your home bar.
 
-## Included through Milestone 3
+## Included through Milestone 4
 
 - Guest-first welcome and local bar setup
 - Water is treated as universally available; standard ice for shaking or stirring and large ice for serving are tracked independently and require explicit answers before matching
@@ -28,6 +28,13 @@ A polished Expo/React Native vertical slice for discovering cocktails from the i
 - A local asynchronous extraction preview with a demonstrable failure/retry path and strict typed output
 - A local catalogue review queue with explicit approve, merge, and reject decisions
 - Clearly labelled simulation boundaries for camera access, external lookup, AI, authentication, and shared publication
+- Machine-enforced recipe editorial validation with review/version/publication metadata
+- Private 500-character tasting notes attached only to completed Make sessions
+- Withdrawn-recipe lifecycle that keeps saved references visible without recommending unavailable content
+- In-app About & Privacy status with local data counts and explicit production boundaries
+- EAS internal/production profiles, stable store identifiers, app-version runtime policy, and iOS privacy-manifest baseline
+- Release CI that type-checks, runs 50 tests, and produces a static production web export
+- Deployment, recovery, security, content, accessibility/device, performance, usability, and store-submission handover docs
 
 ## Run locally
 
@@ -43,5 +50,7 @@ Use `pnpm start` for Expo Go, then scan the QR code from an iPhone or Android de
 ```bash
 pnpm check
 ```
+
+Use `pnpm check:release` for the full release gate, including the production web export. See [Release readiness](docs/RELEASE_READINESS.md) for the native/store checklist and the remaining external launch blockers.
 
 Guest and preview-account state are stored through a versioned AsyncStorage boundary in this slice. The preview does not request passwords, perform authentication, open the camera, contact an external barcode provider, upload label references, run a hosted AI model, or publish catalogue records. Supabase authentication, PostgreSQL sync, secure photo storage, server-side provider/AI adapters, transactional catalogue approval, and physical-device camera testing require deployment configuration; the domain, migration, and UI layers are ready to move behind those adapters.

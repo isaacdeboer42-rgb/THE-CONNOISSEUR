@@ -38,6 +38,7 @@ import {
   AccountProfile,
   BarSnapshot,
   BasicId,
+  ContentRecipeId,
   FlavourDimension,
   GuestImportState,
   IngredientId,
@@ -128,7 +129,7 @@ type SnapshotAction =
     }
   | { type: 'setBasic'; basicId: BasicId; value: StapleState }
   | { type: 'setOnboarded'; value: boolean }
-  | { type: 'toggleSaved'; recipeId: RecipeId; timestamp: string }
+  | { type: 'toggleSaved'; recipeId: ContentRecipeId; timestamp: string }
   | { type: 'addShopping'; ingredientId: IngredientId; timestamp: string }
   | { type: 'removeShopping'; ingredientId: IngredientId }
   | { type: 'setPersistentPreference'; dimension: FlavourDimension; value?: TastePreference }
@@ -598,7 +599,7 @@ interface BarContextValue {
   ) => void;
   setBasic: (basicId: BasicId, value: StapleState) => void;
   completeOnboarding: () => void;
-  toggleSaved: (recipeId: RecipeId) => void;
+  toggleSaved: (recipeId: ContentRecipeId) => void;
   addShoppingItem: (ingredientId: IngredientId) => void;
   removeShoppingItem: (ingredientId: IngredientId) => void;
   setPersistentPreference: (dimension: FlavourDimension, value?: TastePreference) => void;

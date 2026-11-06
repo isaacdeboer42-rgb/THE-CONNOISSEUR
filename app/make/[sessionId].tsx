@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { IngredientRow } from '@/components/IngredientRow';
 import { Button, EmptyState, Eyebrow, IconButton, Screen, ScreenScroll } from '@/components/ui';
@@ -85,6 +85,18 @@ export default function MakeModeScreen() {
                 <Text style={[styles.feedbackButtonText, session.feedback === 'notForMe' && styles.feedbackButtonTextActive]}>Not for me</Text>
               </Pressable>
             </View>
+            <Text style={styles.noteLabel}>PRIVATE NOTE · OPTIONAL</Text>
+            <TextInput
+              accessibilityLabel="Private tasting note"
+              multiline
+              maxLength={500}
+              value={session.feedbackNote ?? ''}
+              onChangeText={(feedbackNote) => updateMakeSession(session.id, { feedbackNote })}
+              placeholder="What would you change next time?"
+              placeholderTextColor={colors.paperDim}
+              style={styles.noteInput}
+            />
+            <Text style={styles.noteCount}>{session.feedbackNote?.length ?? 0}/500 · stored only on this device</Text>
           </View>
           <Button label="Done for tonight" onPress={() => router.replace('/(tabs)/tonight')} />
         </ScreenScroll>
@@ -231,6 +243,9 @@ const styles = StyleSheet.create({
   feedbackButtonActive: { backgroundColor: colors.brassSoft, borderColor: 'rgba(215,170,98,0.3)' },
   feedbackButtonText: { color: colors.paperMuted, fontFamily: fonts.bodyMedium, fontSize: 12 },
   feedbackButtonTextActive: { color: colors.brass },
+  noteLabel: { color: colors.paperDim, fontFamily: fonts.bodyMedium, fontSize: 10, letterSpacing: 1.1, marginTop: spacing.xl },
+  noteInput: { minHeight: 96, marginTop: spacing.sm, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, backgroundColor: colors.ink, color: colors.paper, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, padding: spacing.md, textAlignVertical: 'top' },
+  noteCount: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 10, textAlign: 'right', marginTop: spacing.xs },
   preflightScroll: { paddingBottom: spacing.huge },
   makeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, marginBottom: spacing.xxxl },
   savedLabel: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.3 },

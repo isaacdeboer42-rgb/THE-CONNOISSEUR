@@ -14,6 +14,8 @@ export type IngredientId =
 export type BasicId = 'standard-ice' | 'large-ice';
 
 export type RecipeId = 'whiskey-sour' | 'old-fashioned' | 'bourbon-smash' | 'vodka-sour';
+export type ArchivedRecipeId = 'classic-martini';
+export type ContentRecipeId = RecipeId | ArchivedRecipeId;
 
 export type StapleState = 'available' | 'unavailable' | 'unknown';
 
@@ -174,6 +176,18 @@ export interface RecipeVersion {
   steps: RecipeStep[];
   flavours: FlavourProfile;
   source: string;
+  publicationStatus: 'published';
+  reviewedAt: string;
+  reviewedBy: string;
+}
+
+export interface ArchivedRecipeReference {
+  id: ArchivedRecipeId;
+  name: string;
+  familyId: string;
+  lastVersionId: string;
+  withdrawnAt: string;
+  reason: string;
 }
 
 export type MatchCategory = 'ready' | 'readyWithSubstitution' | 'oneAway' | 'moreToExplore';
@@ -208,12 +222,13 @@ export interface MakeSession {
   timerStepId?: string;
   completedAt?: string;
   feedback?: 'liked' | 'notForMe';
+  feedbackNote?: string;
   startedAt: string;
   updatedAt: string;
 }
 
 export interface SavedRecipe {
-  recipeId: RecipeId;
+  recipeId: ContentRecipeId;
   savedAt: string;
 }
 

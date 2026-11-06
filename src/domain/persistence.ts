@@ -2,6 +2,7 @@ import {
   AccountProfile,
   BarSnapshot,
   BasicId,
+  ContentRecipeId,
   GuestImportState,
   IngredientId,
   InventoryItem,
@@ -56,6 +57,7 @@ const ingredientIds = new Set<IngredientId>([
 ]);
 
 const recipeIds = new Set<RecipeId>(['whiskey-sour', 'old-fashioned', 'bourbon-smash', 'vodka-sour']);
+const contentRecipeIds = new Set<ContentRecipeId>([...recipeIds, 'classic-martini']);
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -137,21 +139,21 @@ function normalizeInventory(value: unknown): InventoryItem[] {
 }
 
 function normalizeSaved(value: unknown, legacyIds: unknown): SavedRecipe[] {
-  const normalized = new Map<RecipeId, SavedRecipe>();
+  const normalized = new Map<ContentRecipeId, SavedRecipe>();
   if (Array.isArray(value)) {
     value.forEach((raw) => {
       const item = record(raw);
-      if (typeof item.recipeId !== 'string' || !recipeIds.has(item.recipeId as RecipeId)) return;
-      normalized.set(item.recipeId as RecipeId, {
-        recipeId: item.recipeId as RecipeId,
+      if (typeof item.recipeId !== 'string' || !contentRecipeIds.has(item.recipeId as ContentRecipeId)) return;
+      normalized.set(item.recipeId as ContentRecipeId, {
+        recipeId: item.recipeId as ContentRecipeId,
         savedAt: typeof item.savedAt === 'string' ? item.savedAt : new Date(0).toISOString(),
       });
     });
   }
   if (Array.isArray(legacyIds)) {
     legacyIds.forEach((id) => {
-      if (typeof id === 'string' && recipeIds.has(id as RecipeId) && !normalized.has(id as RecipeId)) {
-        normalized.set(id as RecipeId, { recipeId: id as RecipeId, savedAt: new Date(0).toISOString() });
+      if (typeof id === 'string' && contentRecipeIds.has(id as ContentRecipeId) && !normalized.has(id as ContentRecipeId)) {
+        normalized.set(id as ContentRecipeId, { recipeId: id as ContentRecipeId, savedAt: new Date(0).toISOString() });
       }
     });
   }
@@ -342,6 +344,10 @@ function normalizeMakeSessions(value: unknown): MakeSession[] {
       completedAt && (session.feedback === 'liked' || session.feedback === 'notForMe')
         ? session.feedback
         : undefined;
+    const feedbackNote =
+      completedAt && typeof session.feedbackNote === 'string'
+        ? session.feedbackNote.trim().slice(0, 500) || undefined
+        : undefined;
 
     const currentStep = stepIndex >= 0 ? recipe.steps[stepIndex] : undefined;
     const hasValidTimer =
@@ -362,6 +368,7 @@ function normalizeMakeSessions(value: unknown): MakeSession[] {
         : {}),
       ...(completedAt ? { completedAt } : {}),
       ...(feedback ? { feedback } : {}),
+      ...(feedbackNote ? { feedbackNote } : {}),
       startedAt: session.startedAt,
       updatedAt,
     });

@@ -1,4 +1,9 @@
-import { Ingredient, IngredientId, RecipeVersion } from '@/domain/types';
+import {
+  ArchivedRecipeReference,
+  Ingredient,
+  IngredientId,
+  RecipeVersion,
+} from '@/domain/types';
 
 export const ingredients: Ingredient[] = [
   {
@@ -152,6 +157,9 @@ export const recipes: RecipeVersion[] = [
       },
     ],
     source: 'Connoisseur editorial recipe',
+    publicationStatus: 'published',
+    reviewedAt: '2026-11-06T00:00:00.000Z',
+    reviewedBy: 'Connoisseur editorial',
   },
   {
     id: 'old-fashioned',
@@ -182,6 +190,9 @@ export const recipes: RecipeVersion[] = [
       { id: 'of-finish', title: 'Finish', instruction: 'Express an orange peel over the glass if available, then serve.' },
     ],
     source: 'Connoisseur editorial recipe',
+    publicationStatus: 'published',
+    reviewedAt: '2026-11-06T00:00:00.000Z',
+    reviewedBy: 'Connoisseur editorial',
   },
   {
     id: 'bourbon-smash',
@@ -212,6 +223,9 @@ export const recipes: RecipeVersion[] = [
       { id: 'bs-pour', title: 'Pour and crown', instruction: 'Open-pour into a rocks glass and crown with more crushed ice.' },
     ],
     source: 'Connoisseur editorial recipe',
+    publicationStatus: 'published',
+    reviewedAt: '2026-11-06T00:00:00.000Z',
+    reviewedBy: 'Connoisseur editorial',
   },
   {
     id: 'vodka-sour',
@@ -262,6 +276,9 @@ export const recipes: RecipeVersion[] = [
       },
     ],
     source: 'Connoisseur editorial recipe',
+    publicationStatus: 'published',
+    reviewedAt: '2026-11-06T00:00:00.000Z',
+    reviewedBy: 'Connoisseur editorial',
   },
 ];
 
@@ -269,3 +286,18 @@ export const recipeById = Object.fromEntries(recipes.map((recipe) => [recipe.id,
   RecipeVersion['id'],
   RecipeVersion
 >;
+
+export const archivedRecipes: ArchivedRecipeReference[] = [
+  {
+    id: 'classic-martini',
+    name: 'Classic Martini',
+    familyId: 'martini',
+    lastVersionId: 'classic-martini-v1',
+    withdrawnAt: '2026-11-06T00:00:00.000Z',
+    reason: 'This recipe is being re-reviewed. Its saved reference remains available.',
+  },
+];
+
+export const archivedRecipeById = Object.fromEntries(
+  archivedRecipes.map((recipe) => [recipe.id, recipe]),
+) as Record<ArchivedRecipeReference['id'], ArchivedRecipeReference>;

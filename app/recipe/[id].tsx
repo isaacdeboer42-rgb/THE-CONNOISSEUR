@@ -4,9 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IngredientRow } from '@/components/IngredientRow';
 import { Button, EmptyState, Eyebrow, IconButton, InlinePill, Screen, ScreenScroll, SectionHeading } from '@/components/ui';
-import { ingredientById, recipeById } from '@/data/catalog';
+import { archivedRecipeById, ingredientById, recipeById } from '@/data/catalog';
 import { categoryLabel, matchRecipe } from '@/domain/matching';
-import { IngredientId, RecipeId } from '@/domain/types';
+import { ArchivedRecipeId, IngredientId, RecipeId } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
@@ -33,10 +33,33 @@ export default function RecipeDetailScreen() {
   const [servings, setServings] = useState(1);
   const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const recipe = recipeById[recipeId as RecipeId];
+  const archived = archivedRecipeById[recipeId as ArchivedRecipeId];
   const match = useMemo(
     () => (recipe ? matchRecipe(recipe, snapshot.inventory, snapshot.basics) : undefined),
     [recipe, snapshot.inventory, snapshot.basics],
   );
+
+  if (archived) {
+    const saved = snapshot.savedRecipes.some((item) => item.recipeId === archived.id);
+    return (
+      <Screen>
+        <ScreenScroll>
+          <EmptyState
+            glyph="—"
+            title={`${archived.name} is unavailable`}
+            body={archived.reason}
+            action={
+              saved ? (
+                <Button label="Remove saved reference" variant="secondary" onPress={() => toggleSaved(archived.id)} />
+              ) : (
+                <Button label="Back to Discover" onPress={() => router.replace('/(tabs)/discover')} />
+              )
+            }
+          />
+        </ScreenScroll>
+      </Screen>
+    );
+  }
 
   if (!recipe || !match) {
     return (

@@ -58,6 +58,7 @@ export function getPurchaseSuggestions(snapshot: BarSnapshot): PurchaseSuggestio
         (match) => isDirectlyReady(match) && newFamilyIds.has(match.recipe.familyId),
       );
       const savedRecipeCount = snapshot.savedRecipes.filter((saved) => {
+        if (saved.recipeId === 'classic-martini') return false;
         const before = baselineById.get(saved.recipeId);
         const after = simulated.find((match) => match.recipe.id === saved.recipeId);
         return Boolean(before && after && !isDirectlyReady(before) && isDirectlyReady(after));

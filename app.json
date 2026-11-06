@@ -9,16 +9,30 @@
     "backgroundColor": "#0B0E0D",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.connoisseur.app"
+      "bundleIdentifier": "com.connoisseur.app",
+      "buildNumber": "1",
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.connoisseur.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0B0E0D"
       }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "plugins": [
       "expo-router",
