@@ -11,6 +11,7 @@ Schema changes use forward migrations committed with the release. Before deploym
 - Identity: register, sign in, recovery, refresh, delete/anonymise account.
 - Bar data: user-owned inventory, basics, preferences, saves, shopping and pinned make sessions.
 - Catalogue: public published versions; server-authorised editorial lifecycle and audit history.
+- Broad discovery: read-only public Mixology Tools adapter with pagination, timeout, schema validation, attribution and a reviewed local fallback. No private bar state is included in these requests.
 - Product resolution: provider adapter with canonical barcode, timeout, cache and manual-entry fallback.
 - Private product/photo: owner-only record and private object; explicit opt-in creates a review submission.
 - Extraction: queued server job with strict typed output, model/version evidence, retries and failure state.
@@ -19,7 +20,7 @@ Every mutating endpoint accepts an idempotency key. Duplicate scan, guest import
 
 ## Monitoring and incidents
 
-Alert on authentication failures, provider timeout/error rates, extraction backlog, catalogue review backlog, database/storage saturation, elevated 5xx responses and backup failures. External failures must keep the private product usable and return an actionable manual path.
+Alert on authentication failures, broad-catalogue and product-provider timeout/error rates, extraction backlog, catalogue review backlog, database/storage saturation, elevated 5xx responses and backup failures. External failures must keep the reviewed local collection and private products usable and return an actionable retry/manual path.
 
 For an incident: declare owner/severity, stop unsafe writes if needed, preserve audit evidence, rotate exposed credentials, communicate impact, restore service, verify ownership boundaries, and write a blameless post-incident record.
 

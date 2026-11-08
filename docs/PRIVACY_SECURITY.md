@@ -2,13 +2,16 @@
 
 ## Current release-candidate behavior
 
-AsyncStorage holds guest and local-preview snapshots: inventory, basics, preferences, saved recipes, shopping, make progress, private feedback, private products, local photo URIs and simulated submissions. The build sends none of this to a hosted service. The in-app About & Privacy screen states that boundary.
+AsyncStorage holds guest and local-preview snapshots: inventory, basics, preferences, saved recipes, shopping, make progress, private feedback, private products, local photo URIs and simulated submissions. The build sends none of this private state to a hosted service.
+
+Discover makes read-only HTTPS requests to the public Mixology Tools API. Those requests contain catalogue search and pagination parameters and necessarily expose ordinary connection metadata such as the device IP address to that provider. They do not include inventory, saves, preferences, private products, label references, feedback or account-preview state. Broad external recipes are visually separated from the locally reviewed Make collection. The in-app About & Privacy screen states this boundary.
 
 ## Production controls
 
 - Enforce ownership in database policies for every private row and test cross-user denial directly against the database.
 - Store photos in a private bucket; accept only allow-listed image MIME types and size/dimension limits; strip metadata where practical; use short-lived signed URLs.
 - Keep privileged provider, AI and catalogue operations server-side with rate limits, timeouts, output validation and audit records.
+- Pin and monitor external catalogue contracts, retain source attribution, and provide a local fallback when the read-only provider is unavailable.
 - Use TLS, managed encryption at rest, secret rotation and environment-isolated credentials.
 - Minimise structured logs and redact tokens, email, free-text feedback, product-label text and signed URLs.
 - Make submission consent explicit and preserve the exact submitted fields/photo reference independently of later private edits.

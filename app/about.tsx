@@ -10,7 +10,7 @@ import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 const facts = [
   ['Storage', 'Inventory, saves, preferences, private bottle records and tasting notes stay in local app storage.'],
-  ['Network', 'This build does not contact a hosted API, barcode supplier, AI provider or analytics service.'],
+  ['Network', 'Discover reads a public cocktail catalogue from Mixology Tools. Search text is sent to that service; your bar, saves, private bottles and tasting notes are not. No analytics service is connected.'],
   ['Photos', 'Label-photo references are local URIs. They are not uploaded by this build.'],
   ['Accounts', 'Account and recovery screens are a local migration preview, not authentication or cloud backup.'],
   ['Deletion', 'Reset guest bar clears guest data. Uninstalling the app clears its local storage; preview-account deletion requires a production identity service.'],
@@ -38,7 +38,8 @@ export default function AboutScreen() {
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>This device</Text>
           <Text style={styles.statusBody}>{snapshot.inventory.length} inventory items · {snapshot.savedRecipes.length} saved recipes · {snapshot.makeSessions.length} make sessions</Text>
-          <Text style={styles.statusBody}>{recipes.length} published recipes with editorial review metadata</Text>
+          <Text style={styles.statusBody}>{recipes.length} published Connoisseur recipes with editorial review metadata</Text>
+          <Text style={styles.statusBody}>The broad external catalogue is loaded on demand and is clearly separated from reviewed Make recipes.</Text>
         </View>
 
         <View style={styles.list}>

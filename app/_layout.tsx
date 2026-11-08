@@ -29,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="product/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
           <Stack.Screen name="recipe/[id]" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="catalogue-recipe/[id]" options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="make/[sessionId]" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
         </Stack>
         <NoticeToast />
