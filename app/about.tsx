@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Eyebrow, IconButton, Screen, ScreenScroll } from '@/components/ui';
 import { recipes } from '@/data/catalog';
 import { useBar } from '@/state/BarProvider';
+import { useCatalogueUserState } from '@/state/CatalogueProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 const facts = [
@@ -20,6 +21,11 @@ const facts = [
 export default function AboutScreen() {
   const router = useRouter();
   const { snapshot } = useBar();
+  const {
+    inventory: catalogueInventory,
+    makeSessions: catalogueMakeSessions,
+    persistenceError: cataloguePersistenceError,
+  } = useCatalogueUserState();
   const version = Constants.expoConfig?.version ?? 'development';
 
   return (
@@ -40,7 +46,9 @@ export default function AboutScreen() {
           <Text style={styles.statusTitle}>This device</Text>
           <Text style={styles.statusBody}>{snapshot.inventory.length} inventory items · {snapshot.savedRecipes.length} saved recipes · {snapshot.makeSessions.length} make sessions</Text>
           <Text style={styles.statusBody}>{recipes.length} published Connoisseur recipes with editorial review metadata</Text>
+          <Text style={styles.statusBody}>{catalogueInventory.length} external catalogue ingredients · {catalogueMakeSessions.length} community Make sessions stored locally</Text>
           <Text style={styles.statusBody}>The broad external catalogue is loaded on demand and is clearly separated from reviewed Make recipes.</Text>
+          {cataloguePersistenceError ? <Text style={styles.statusError}>{cataloguePersistenceError}</Text> : null}
         </View>
 
         <View style={styles.list}>
@@ -70,6 +78,7 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 15, lineHeight: 23, marginTop: spacing.md, maxWidth: 620 },
   statusCard: { marginTop: spacing.xxxl, gap: spacing.sm, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(169,214,141,0.22)', backgroundColor: colors.readyDeep },
   statusTitle: { color: colors.ready, fontFamily: fonts.bodyMedium, fontSize: 12 },
+  statusError: { color: colors.alert, fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 18 },
   statusBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   list: { marginTop: spacing.xxl },
   row: { paddingVertical: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },

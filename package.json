@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "audit:catalogue": "node scripts/audit-catalogue.mjs",
     "export:web": "expo export --platform web --output-dir dist",
     "check": "pnpm typecheck && pnpm test",
     "check:release": "pnpm check && pnpm export:web"

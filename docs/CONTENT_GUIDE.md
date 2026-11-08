@@ -11,3 +11,9 @@ Publication lifecycle is draft → reviewed → published → withdrawn. Only pu
 Product catalogue submissions remain private unless the owner explicitly opts in. Reviewers inspect the submitted evidence, make approve/merge/reject decisions, correct mappings and aliases, and retain model/version, decision and audit timestamps. Private edits after submission do not rewrite submitted evidence.
 
 Source and image rights must be documented outside the recipe source label before public launch.
+
+## Broad external catalogue
+
+The Mixology Tools catalogue is a discovery/reference source, not an automatic extension of the reviewed Connoisseur collection. `pnpm audit:catalogue` inspects every current upstream recipe for a name, instructions, ingredient references, positive quantities or explicit qualitative `top`/`rinse` measures, units, source identity and duplicate ingredient rows. The generated result is recorded in `CATALOGUE_AUDIT_REPORT.md`.
+
+Only structurally complete external records appear in Discover, open through direct recipe links, or start the separate community reference Make flow. Blocked and incomplete records remain in the upstream provider for correction but are excluded from The Connoisseur catalogue. That gate does not certify taste, factual accuracy, substitutions, safe serving assumptions, source rights or image rights. Promotion into the reviewed collection still requires comparison with the retained original source, immutable versioning, the full `validateRecipeContent` contract and a named human reviewer. External ingredient inventory remains namespaced from the reviewed recommendation taxonomy until an approved mapping is published.

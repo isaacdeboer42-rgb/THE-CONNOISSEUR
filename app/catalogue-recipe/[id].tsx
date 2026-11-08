@@ -4,6 +4,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 
 import { CatalogueApiError, mixologyToolsCatalogue } from '@/catalogue/mixologyTools';
 import { CatalogueRecipe } from '@/catalogue/types';
+import { auditCatalogueRecipe } from '@/catalogue/validation';
 import {
   Button,
   EmptyState,
@@ -15,6 +16,7 @@ import {
   SectionHeading,
 } from '@/components/ui';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
+import { useCatalogueUserState } from '@/state/CatalogueProvider';
 
 function sourceUrlFor(recipe: CatalogueRecipe): string | undefined {
   if (!recipe.sourceUrl) return undefined;
@@ -48,6 +50,7 @@ export default function CatalogueRecipeDetailScreen() {
   const [loading, setLoading] = useState(validRecipeId);
   const [error, setError] = useState<string>();
   const [reloadKey, setReloadKey] = useState(0);
+  const { inventory, addIngredient, addRecipeIngredients, startMakeSession } = useCatalogueUserState();
 
   useEffect(() => {
     if (!validRecipeId) {
@@ -112,6 +115,26 @@ export default function CatalogueRecipeDetailScreen() {
   const sourceUrl = sourceUrlFor(recipe);
   const sourceLabel = recipe.source?.trim() || 'Community catalogue';
   const instructions = recipe.instructions?.trim();
+  const audit = auditCatalogueRecipe(recipe);
+  const inventoryIds = new Set(inventory.map((item) => item.ingredientId));
+
+  if (!audit.makeReady) {
+    return (
+      <Screen>
+        <ScreenScroll contentStyle={styles.scrollContent}>
+          <View style={styles.topBar}>
+            <IconButton label="Go back" glyph="‹" onPress={goBack} />
+          </View>
+          <EmptyState
+            glyph="!"
+            title="Recipe excluded"
+            body="This upstream record is incomplete and is not part of The Connoisseur catalogue."
+            action={<Button label="Back to Discover" onPress={goBack} />}
+          />
+        </ScreenScroll>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -139,7 +162,7 @@ export default function CatalogueRecipeDetailScreen() {
           <View style={styles.noticeCopy}>
             <Text style={styles.noticeTitle}>Reference recipe</Text>
             <Text style={styles.noticeBody}>
-              This upstream record has not passed The Connoisseur editorial, rights, scaling, availability, or Make-mode review.
+              This record is structurally complete for guided reference mode. Quantities, method and rights still need human editorial confirmation.
             </Text>
           </View>
         </View>
@@ -160,10 +183,22 @@ export default function CatalogueRecipeDetailScreen() {
                       <Text style={styles.ingredientPath}>{ingredient.hierarchy.join(' › ')}</Text>
                     ) : null}
                   </View>
+                  <Button
+                    label={inventoryIds.has(ingredient.ingredientId) ? 'In bar' : 'Add'}
+                    variant="ghost"
+                    disabled={inventoryIds.has(ingredient.ingredientId)}
+                    style={styles.ingredientAdd}
+                    onPress={() => addIngredient(ingredient)}
+                  />
                 </View>
               );
             })}
           </View>
+          <Button
+            label="Add all ingredients to My Bar"
+            variant="secondary"
+            onPress={() => addRecipeIngredients(recipe)}
+          />
         </View>
 
         <View style={styles.section}>
@@ -183,6 +218,27 @@ export default function CatalogueRecipeDetailScreen() {
             </View>
           </View>
         ) : null}
+
+        <View style={styles.section}>
+          <SectionHeading eyebrow="Automated audit" title="Structurally complete" />
+          <View style={styles.auditCard}>
+            {audit.issues.map((issue) => (
+              <View key={`${issue.code}-${issue.field}`} style={styles.auditRow}>
+                <Text style={[styles.auditBadge, issue.severity === 'blocking' && styles.auditBadgeBlocking]}>
+                  {issue.severity === 'blocking' ? 'BLOCKER' : 'CHECK'}
+                </Text>
+                <Text style={styles.auditText}>{issue.message}</Text>
+              </View>
+            ))}
+          </View>
+          <Button
+            label="Start guided Make"
+            onPress={() => {
+              const sessionId = startMakeSession(recipe);
+              router.push(`/catalogue-make/${sessionId}` as never);
+            }}
+          />
+        </View>
 
         <View style={styles.sourceCard}>
           <Text style={styles.sourceTitle}>Source and next step</Text>
@@ -228,9 +284,15 @@ const styles = StyleSheet.create({
   ingredientCopy: { flex: 1 },
   ingredientName: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
   ingredientPath: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  ingredientAdd: { minHeight: 40, paddingHorizontal: spacing.md },
   instructionsCard: { padding: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
   instructionsText: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 23 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  auditCard: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
+  auditRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  auditBadge: { width: 58, color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 9, letterSpacing: 0.8 },
+  auditBadgeBlocking: { color: colors.alert },
+  auditText: { flex: 1, color: colors.paperMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   sourceCard: { gap: spacing.md, marginTop: spacing.huge, padding: spacing.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface },
   sourceTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
   sourceBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 19 },

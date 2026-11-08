@@ -5,7 +5,9 @@ A polished Expo/React Native vertical slice for discovering cocktails from the i
 ## Included through Milestone 4
 
 - Guest-first welcome and local bar setup
-- On-demand discovery across 2,000+ externally sourced cocktails and a hierarchical liquor/ingredient catalogue, with pagination, source attribution and offline-safe fallback to the reviewed local collection
+- On-demand discovery across a 2,000+ record external source and a hierarchical liquor/ingredient catalogue, with blocked or incomplete recipes excluded, pagination, source attribution and offline-safe fallback to the reviewed local collection
+- Catalogue-wide structural auditing with Make blockers for missing instructions, quantities or units, plus an explicit human editorial/rights check for every external recipe
+- External liquor and recipe ingredients can be added to My Bar; structurally complete community recipes can open a clearly labelled one-step reference Make flow
 - Water is treated as universally available; standard ice for shaking or stirring and large ice for serving are tracked independently and require explicit answers before matching
 - Pure, explainable recipe matching and stable ranking
 - Bourbon reference scenario from the product specification
@@ -35,7 +37,7 @@ A polished Expo/React Native vertical slice for discovering cocktails from the i
 - Withdrawn-recipe lifecycle that keeps saved references visible without recommending unavailable content
 - In-app About & Privacy status with local data counts and explicit production boundaries
 - EAS internal/production profiles, stable store identifiers, app-version runtime policy, and iOS privacy-manifest baseline
-- Release CI that type-checks, runs 61 tests, and produces a static production web export
+- Release CI that type-checks, runs 66 tests, and produces a static production web export
 - Deployment, recovery, security, content, accessibility/device, performance, usability, and store-submission handover docs
 - Implementation-ready UX audit, journey maps, annotated screen contracts, state/content rules, backlog and usability test pack
 - Testable Availability/Taste-led recommendation views, persistent ml/fl-oz preference, 1–8 serving scaling and batch guidance

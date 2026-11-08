@@ -7,13 +7,21 @@ import { ingredientById } from '@/data/catalog';
 import { verifiedProductById } from '@/data/products';
 import { BasicId } from '@/domain/types';
 import { useBar } from '@/state/BarProvider';
+import { useCatalogueUserState } from '@/state/CatalogueProvider';
 import { colors, fonts, radius, spacing } from '@/theme/tokens';
 
 export default function MyBarScreen() {
   const router = useRouter();
   const { snapshot, mode, removeInventoryItem, setInventoryItemStatus } = useBar();
+  const {
+    inventory: catalogueInventory,
+    removeIngredient: removeCatalogueIngredient,
+    setIngredientStatus: setCatalogueIngredientStatus,
+  } = useCatalogueUserState();
   const onHand = snapshot.inventory.filter((item) => item.status === 'onHand');
   const outOfStock = snapshot.inventory.filter((item) => item.status === 'outOfStock');
+  const catalogueOnHand = catalogueInventory.filter((item) => item.status === 'onHand');
+  const catalogueOutOfStock = catalogueInventory.filter((item) => item.status === 'outOfStock');
   const iceBasics: Array<{ id: BasicId; label: string; glyph: string; description: string }> = [
     {
       id: 'standard-ice',
@@ -57,7 +65,7 @@ export default function MyBarScreen() {
           </View>
         ) : null}
 
-        {snapshot.inventory.length === 0 ? (
+        {snapshot.inventory.length === 0 && catalogueInventory.length === 0 ? (
           <EmptyState
             glyph="▥"
             title="An empty shelf is still a starting point"
@@ -73,11 +81,11 @@ export default function MyBarScreen() {
           <>
             <View style={styles.summaryRow}>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryValue}>{onHand.length}</Text>
+                <Text style={styles.summaryValue}>{onHand.length + catalogueOnHand.length}</Text>
                 <Text style={styles.summaryLabel}>On hand</Text>
               </View>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryValue}>{outOfStock.length}</Text>
+                <Text style={styles.summaryValue}>{outOfStock.length + catalogueOutOfStock.length}</Text>
                 <Text style={styles.summaryLabel}>Out of stock</Text>
               </View>
               <View style={styles.summaryCard}>
@@ -159,6 +167,54 @@ export default function MyBarScreen() {
                 })}
               </View>
             </View>
+
+            {catalogueInventory.length ? (
+              <View style={styles.section}>
+                <SectionHeading eyebrow="Open catalogue" title="Liquors & recipe ingredients" />
+                <Text style={styles.stockNotice}>These entries come from the community catalogue and remain separate from the reviewed recommendation taxonomy.</Text>
+                <View style={styles.list}>
+                  {catalogueInventory.map((item) => {
+                    const isOutOfStock = item.status === 'outOfStock';
+                    const displayName = item.fullName || item.name;
+                    return (
+                      <View key={item.ingredientId} style={[styles.row, isOutOfStock && styles.rowOutOfStock]}>
+                        <View style={[styles.initial, isOutOfStock && styles.initialOutOfStock]}>
+                          <Text style={[styles.initialText, isOutOfStock && styles.initialTextOutOfStock]}>{displayName.charAt(0)}</Text>
+                        </View>
+                        <View style={styles.rowCopy}>
+                          <View style={styles.rowTitleLine}>
+                            <Text style={styles.rowName}>{displayName}</Text>
+                            <Text style={styles.productBadge}>CATALOGUE</Text>
+                          </View>
+                          <Text style={styles.rowCategory}>{item.hierarchy?.join(' › ') || 'Community ingredient'}</Text>
+                          <Text style={styles.rowMapping}>
+                            {item.percentAbv !== undefined ? `${item.percentAbv}% ABV · ` : ''}{isOutOfStock ? 'Out of stock' : 'On hand'}
+                          </Text>
+                        </View>
+                        <View style={styles.rowActions}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={isOutOfStock ? `Restock ${displayName}` : `Mark ${displayName} out of stock`}
+                            onPress={() => setCatalogueIngredientStatus(item.ingredientId, isOutOfStock ? 'onHand' : 'outOfStock')}
+                            style={[styles.stockButton, isOutOfStock && styles.restockButton]}
+                          >
+                            <Text style={[styles.stockButtonText, isOutOfStock && styles.restockButtonText]}>{isOutOfStock ? 'Restock' : 'Mark empty'}</Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${displayName}`}
+                            onPress={() => removeCatalogueIngredient(item.ingredientId)}
+                            style={styles.removeButton}
+                          >
+                            <Text style={styles.remove}>Remove</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
           </>
         )}
 

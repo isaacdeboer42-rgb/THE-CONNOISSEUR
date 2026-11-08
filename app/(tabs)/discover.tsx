@@ -12,9 +12,11 @@ import {
 
 import { CatalogueApiError, mixologyToolsCatalogue } from '@/catalogue/mixologyTools';
 import type { CatalogueIngredient, CatalogueRecipe, CatalogueStats } from '@/catalogue/types';
+import { isCatalogueRecipeVisible } from '@/catalogue/validation';
 import { RecipeCard } from '@/components/RecipeCard';
 import { Button, EmptyState, Eyebrow, InlinePill, Screen } from '@/components/ui';
 import { useBar } from '@/state/BarProvider';
+import { useCatalogueUserState } from '@/state/CatalogueProvider';
 import { colors, contentMaxWidth, fonts, radius, spacing } from '@/theme/tokens';
 
 type BrowseMode = 'cocktails' | 'liquors' | 'bar';
@@ -84,7 +86,10 @@ function RemoteRecipeCard({ recipe, onPress }: { recipe: CatalogueRecipe; onPres
       style={({ pressed }) => [styles.catalogueCard, pressed && styles.pressed]}
     >
       <View style={styles.catalogueCardTop}>
-        <InlinePill label={recipe.abv?.display || 'ABV unavailable'} tone="brass" />
+        <View style={styles.pillRow}>
+          <InlinePill label={recipe.abv?.display || 'ABV unavailable'} tone="brass" />
+          <InlinePill label="Complete reference" tone="ready" />
+        </View>
         <Text style={styles.arrow}>↗</Text>
       </View>
       <Text accessibilityRole="header" style={styles.catalogueName}>{recipe.name}</Text>
@@ -103,7 +108,15 @@ function RemoteRecipeCard({ recipe, onPress }: { recipe: CatalogueRecipe; onPres
   );
 }
 
-function IngredientCard({ ingredient }: { ingredient: CatalogueIngredient }) {
+function IngredientCard({
+  ingredient,
+  inBar,
+  onAdd,
+}: {
+  ingredient: CatalogueIngredient;
+  inBar: boolean;
+  onAdd: () => void;
+}) {
   const abv = ingredient.percentAbv;
   const path = ingredient.path?.trim();
   const isAlcoholic = abv !== undefined && abv > 0;
@@ -132,6 +145,7 @@ function IngredientCard({ ingredient }: { ingredient: CatalogueIngredient }) {
             : 'Canonical spirit or liquor'
           : 'Non-alcoholic cocktail ingredient'}
       </Text>
+      <Button label={inBar ? 'Already in My Bar' : 'Add to My Bar'} variant="secondary" disabled={inBar} onPress={onAdd} />
     </View>
   );
 }
@@ -139,6 +153,7 @@ function IngredientCard({ ingredient }: { ingredient: CatalogueIngredient }) {
 export default function DiscoverScreen() {
   const router = useRouter();
   const { recommendations } = useBar();
+  const { inventory: catalogueInventory, addIngredient } = useCatalogueUserState();
   const [mode, setMode] = useState<BrowseMode>('cocktails');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query.trim(), 400);
@@ -190,7 +205,7 @@ export default function DiscoverScreen() {
         limit: RECIPE_PAGE_SIZE,
         signal: controller.signal,
       }).then((result) => {
-        setRecipes(result.recipes);
+        setRecipes(result.recipes.filter(isCatalogueRecipeVisible));
         setRecipeCursor(result.pagination.nextCursor);
         setHasMoreRecipes(result.pagination.hasNext);
       }).catch((nextError: unknown) => {
@@ -245,7 +260,10 @@ export default function DiscoverScreen() {
       });
       setRecipes((current) => {
         const seen = new Set(current.map((recipe) => recipe.id));
-        return [...current, ...result.recipes.filter((recipe) => !seen.has(recipe.id))];
+        return [
+          ...current,
+          ...result.recipes.filter((recipe) => isCatalogueRecipeVisible(recipe) && !seen.has(recipe.id)),
+        ];
       });
       setRecipeCursor(result.pagination.nextCursor);
       setHasMoreRecipes(result.pagination.hasNext);
@@ -295,7 +313,7 @@ export default function DiscoverScreen() {
         <View style={styles.sourceNotice}>
           <Text style={styles.sourceMark}>✦</Text>
           <Text style={styles.sourceCopy}>
-            Community/open reference via Mixology Tools · {stats ? `${stats.recipeCount.toLocaleString()} cocktails · ${stats.ingredientCount.toLocaleString()} liquor and ingredient entries` : 'live public catalogue'} · original source links retained.
+            Complete community references via Mixology Tools · {stats ? `${stats.recipeCount.toLocaleString()} provider cocktails · ${stats.ingredientCount.toLocaleString()} liquor and ingredient entries` : 'live public catalogue'} · blocked and incomplete recipes are excluded.
           </Text>
         </View>
       ) : (
@@ -363,7 +381,13 @@ export default function DiscoverScreen() {
         <FlatList
           data={visibleIngredients}
           keyExtractor={(ingredient) => String(ingredient.id)}
-          renderItem={({ item }) => <IngredientCard ingredient={item} />}
+          renderItem={({ item }) => (
+            <IngredientCard
+              ingredient={item}
+              inBar={catalogueInventory.some((entry) => entry.ingredientId === item.id)}
+              onAdd={() => addIngredient(item)}
+            />
+          )}
           ListHeaderComponent={header}
           ListEmptyComponent={empty}
           ListFooterComponent={hasMoreIngredients ? (
@@ -446,6 +470,7 @@ const styles = StyleSheet.create({
   separator: { height: spacing.md },
   catalogueCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, padding: spacing.xl, gap: spacing.md },
   catalogueCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   arrow: { color: colors.paperDim, fontFamily: fonts.body, fontSize: 19 },
   catalogueName: { color: colors.paper, fontFamily: fonts.display, fontSize: 29, lineHeight: 34 },
   catalogueIngredients: { color: colors.brass, fontFamily: fonts.bodyMedium, fontSize: 11, lineHeight: 17 },
