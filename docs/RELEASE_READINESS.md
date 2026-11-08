@@ -37,4 +37,4 @@ These are launch blockers because they change the deployed privacy, cost or prod
 
 ## Known limitations
 
-Private user state remains local-only: there is no real authentication, cross-device sync, camera capture, external barcode lookup, hosted AI, server-admin role, cloud photo upload, monitoring or automated backup. Discover does read the public Mixology Tools catalogue over HTTPS, with a local reviewed fallback and without sending private bar state. The catalogue review queue is a labelled local simulation. Local data is not a backup.
+Private user state remains local-only: there is no real authentication, cross-device sync, external barcode lookup, hosted AI, server-admin role, cloud photo upload, monitoring or automated backup. Live UPC-A/EAN-13 camera detection is connected, but frames are not captured or stored and physical-device coverage still requires sign-off. Discover reads the public Mixology Tools catalogue over HTTPS, with a local reviewed fallback and without sending private bar state. The catalogue review queue is a labelled local simulation. Local data is not a backup.

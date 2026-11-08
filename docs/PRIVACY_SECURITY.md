@@ -6,6 +6,8 @@ AsyncStorage holds guest and local-preview snapshots: inventory, basics, prefere
 
 Discover makes read-only HTTPS requests to the public Mixology Tools API. Those requests contain catalogue search and pagination parameters and necessarily expose ordinary connection metadata such as the device IP address to that provider. They do not include inventory, saves, preferences, private products, label references, feedback or account-preview state. Broad external recipes are visually separated from the locally reviewed Make collection. The in-app About & Privacy screen states this boundary.
 
+Bottle scanning requests camera permission only after the user chooses the live scanner. The rear-camera preview is processed by Expo Camera for UPC-A/EAN-13 detection; this build does not take a picture, persist camera frames, upload imagery, or send scanned codes to an external product provider. A detected code is validated locally and either matched to the reviewed local fixture catalogue or carried into private manual recovery.
+
 ## Production controls
 
 - Enforce ownership in database policies for every private row and test cross-user denial directly against the database.

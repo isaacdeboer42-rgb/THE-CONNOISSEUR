@@ -110,7 +110,7 @@ export default function CatalogueReviewScreen() {
             glyph="⌁"
             title="The local review queue is empty"
             body="Recover an unknown barcode, save it privately, then explicitly submit it to exercise this workflow."
-            action={<Button label="Open scan simulation" onPress={() => router.push('/scan' as never)} />}
+            action={<Button label="Open bottle scanner" onPress={() => router.push('/scan' as never)} />}
           />
         ) : (
           <View style={styles.queue}>

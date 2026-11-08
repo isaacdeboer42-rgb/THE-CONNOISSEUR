@@ -18,7 +18,7 @@ Date: 6 November 2026. Scope: current repository at Milestone 4, supplied assign
 | Reference recommendations | With confirmed ice: Whiskey Sour needs lemon; Old Fashioned needs bitters; Bourbon Smash needs lemon and mint. Garnish is optional. | Verified by matching tests. |
 | Undo tied to toast | Undo has an independent 30-second expiry. A stale notice could survive a later non-undoable action. | Valid edge case fixed: invalidation and expiry now clear undo-specific copy. A later production design should retain a dismissible confirmation card until the inventory can no longer be reversed. |
 | Stock controls absent | My Bar exposes Mark empty and Restock; out-of-stock inventory does not satisfy recipes. | Obsolete. Ice cards now remain visible even when the bottle shelf is empty. |
-| Scanning absent | Recognised, duplicate, overlap, unknown, manual, optional-share, extraction failure/retry and review states exist as clearly labelled simulations. | Simulation verified; real camera, permission and provider coverage remain production work. |
+| Scanning absent | Live UPC-A/EAN-13 camera detection now feeds the existing recognised, duplicate, overlap, unknown, manual, optional-share, extraction failure/retry and review states. | Camera implementation verified by source/export; physical-device and provider-coverage evidence remain open. |
 | Only three recipes | Four reviewed variants exist, including vodka scan refresh. This exercises families, one-away, optional garnish and repeated-family counts. | Enough for a vertical-slice prototype; insufficient for production browsing research. |
 | Quick-add label wrong | Label is generated from the actual missing ingredient. Staples route to their ice state, not generic inventory. | Obsolete. |
 | Tiny essential labels | Remaining 10-unit private-note and withdrawn labels were below the design floor. | Fixed to 11. Physical large-text validation remains open. |
@@ -52,7 +52,7 @@ Date: 6 November 2026. Scope: current repository at Milestone 4, supplied assign
 | ml is default; fl oz is optional | Australian first-market assumption. | Assignment requirement. |
 | Serving changes reset an unfinished Make session to preflight | Prevents silent quantity changes midway through a step. | Reversible prototype decision. |
 | More than four servings shows batch guidance | Typical home shakers cannot reliably hold an eight-serve batch. | Assumption; editorial limits should become recipe metadata. |
-| Camera/provider/AI/auth remain visibly simulated | Prevents false confidence before production services exist. | Verified implementation boundary. |
+| Camera scanning is live; provider/AI/auth remain visibly simulated | Enables physical scanning without implying production lookup, extraction, or identity services. | Verified implementation boundary; device evidence pending. |
 | Current brass-led visual system remains | Branding is secondary in this assignment; an aqua migration is not required for task validation. | Reversible design decision. |
 
 No interviews, participant quotes, measured completion rates or native-device results are claimed.

@@ -40,6 +40,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow The Connoisseur to use the camera to scan bottle barcodes. No photos are saved or uploaded.",
+          "barcodeScannerEnabled": true,
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0B0E0D",

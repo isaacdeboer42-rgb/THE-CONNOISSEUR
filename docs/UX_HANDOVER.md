@@ -2,7 +2,7 @@
 
 ## Connected prototype
 
-The Expo app in this repository is the prototype; it uses one internally consistent local snapshot across onboarding, recommendations, inventory, saves, shopping, Make mode and account migration. Camera, external barcode lookup, hosted AI, authentication, cloud sync and shared publication are explicitly labelled simulations.
+The Expo app in this repository is the prototype; it uses one internally consistent local snapshot across onboarding, recommendations, inventory, saves, shopping, Make mode and account migration. UPC-A/EAN-13 camera detection is live and permission-gated. External barcode lookup, hosted AI, authentication, cloud sync and shared publication remain explicitly labelled simulations.
 
 Open it with:
 
@@ -18,7 +18,7 @@ Recommended walkthrough:
 1. Explore sample and verify Whiskey Sour needs lemon, Old Fashioned needs bitters and Bourbon Smash needs lemon plus mint.
 2. Compare Availability and Taste-led on Tonight; open Quick Select.
 3. In My Bar, mark an item empty/restock it and inspect the recommendation change.
-4. Scan the recognised vodka fixture, repeat it, Undo, then use unknown recovery and simulate extraction failure/retry.
+4. Grant camera access and scan a real UPC-A/EAN-13 bottle, then use the recognised fixture, repeat it, Undo, and exercise unknown recovery plus extraction failure/retry.
 5. Change measurement preference, select six servings, read batch guidance, start Make, exit and resume.
 6. Save a recipe, inspect shopping evidence, create a local account preview and open catalogue review.
 7. Use Account reset to verify the custom confirmation and that the sample/account snapshots are separate.
@@ -28,14 +28,14 @@ Recommended walkthrough:
 - Current-workspace audit separated from stale report claims.
 - Stable IA, entry/back/cancel/restoration rules and journey maps.
 - Screen-level implementation contracts and state/content/recovery copy.
-- Connected prototype for guest-first recommendations, generic and specific inventory, simulated recognised/unknown scan, Quick Select, Make, saves, shopping, local conversion and admin review.
+- Connected prototype for guest-first recommendations, generic and specific inventory, live camera barcode detection, local recognised/unknown resolution, Quick Select, Make, saves, shopping, local conversion and admin review.
 - Availability/Taste-led comparison, persistent ml/fl oz, 1–8 servings, batch guidance and mounted Make screen-awake behavior.
 - Regression fixes for Make serving changes, web reset, sample Exit, duplicate featured recipes, sample preference values, undo invalidation and empty-bar ice visibility.
 - Prioritised production backlog and usability test pack.
 
 ## Prototype limitations
 
-No physical camera/provider/AI/auth/backend is connected. Four recipes are enough to verify logic but not production browsing or audience preference. Web QA does not replace VoiceOver, TalkBack, camera, Keep Awake or low-light device evidence. The app does not track quantities/fill level, so “on hand” means presence, not sufficient volume. Feedback remains private history and does not alter ranking.
+The physical camera scanner is connected, but native low-light, orientation, denied-permission, VoiceOver/TalkBack and device-matrix evidence is still pending. No external barcode provider, AI, authentication or private backend is connected. Four reviewed recipes are enough to verify logic but not production browsing or audience preference. The app does not track quantities/fill level, so “on hand” means presence, not sufficient volume. Feedback remains private history and does not alter ranking.
 
 ## Unresolved decisions
 
@@ -53,7 +53,7 @@ No physical camera/provider/AI/auth/backend is connected. Four recipes are enoug
 1. Run native accessibility/camera proof and moderated prototype sessions.
 2. Decide audience, provider, catalogue rights and backend/privacy policy.
 3. Implement identity, row ownership, private storage and idempotent guest import.
-4. Replace scan/provider/AI simulations behind the existing typed boundaries.
+4. Select and connect a production barcode provider and hosted AI behind the existing typed boundaries.
 5. Add production content and recipe-specific serving limits.
 6. Re-run device, performance, recovery, backup and store-readiness gates.
 

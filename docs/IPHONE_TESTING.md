@@ -18,7 +18,7 @@ If LAN discovery is blocked by a guest network, VPN, or firewall, run `pnpm exec
 2. Open a recipe, change servings from 1 to 8, switch ml/fl oz in Preferences, save it, then start Make mode.
 3. Exit Make mode, reopen it, and confirm the active step, serving count, and timer resume.
 4. In **My Bar**, mark an item empty, restock it, and confirm Tonight updates immediately.
-5. Open **Scan bottle** and test recognised, duplicate, unknown, extraction failure/retry, and manual-recovery states.
+5. Open **Scan bottle**, grant camera access, scan a real UPC-A/EAN-13 bottle, and confirm the code reaches verified or unknown recovery. Then test duplicate, denied-permission/manual, extraction failure/retry, and fixture states.
 6. Add a missing ingredient to Shopping and inspect the recipes it unlocks.
 7. Create the clearly labelled local account preview, verify guest import, then review the simulated catalogue queue.
 8. Force-close and reopen the app to confirm inventory, saves, shopping, preferences, and unfinished Make state persist.
@@ -30,11 +30,11 @@ If LAN discovery is blocked by a guest network, VPN, or firewall, run `pnpm exec
 - Explainable recipe matching and ranking
 - Recipe details, serving scaling, measurement preferences, saving, and shopping
 - Persistent Make mode, timers, completion feedback, and private notes
-- Barcode validation plus simulated recognised and unknown-product recovery
+- Live rear-camera UPC-A/EAN-13 detection, checksum validation, and recognised/unknown-product recovery
 - Local account-import and catalogue-review previews
 - Empty, error, retry, duplicate, withdrawn-content, and reset states
 
-The camera, external barcode lookup, hosted AI extraction, real authentication, cloud sync, photo upload, and catalogue publication are deliberately simulated. Those workflows need production services before they can be tested end to end.
+Camera barcode detection is live and opt-in; no frame or photo is saved. External barcode lookup, hosted AI extraction, real authentication, cloud sync, photo upload, and catalogue publication remain deliberately simulated. Real bottles not present in the local verified fixture catalogue therefore enter the private unknown-product recovery flow.
 
 ## Standalone installable iPhone build
 

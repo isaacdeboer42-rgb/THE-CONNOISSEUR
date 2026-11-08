@@ -1,6 +1,7 @@
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button, Eyebrow, IconButton, InlinePill, Screen, ScreenScroll } from '@/components/ui';
 import { ingredients } from '@/data/catalog';
@@ -35,6 +36,8 @@ function statusCopy(status: AddStatus): string {
 
 export default function ScanScreen() {
   const router = useRouter();
+  const [cameraPermission, requestCameraPermission, refreshCameraPermission] = useCameraPermissions();
+  const scanLockRef = useRef(false);
   const {
     snapshot,
     addVerifiedProduct,
@@ -48,6 +51,9 @@ export default function ScanScreen() {
   const [overlapMode, setOverlapMode] = useState<OverlapMode>();
   const [addStatus, setAddStatus] = useState<AddStatus>();
   const [scanError, setScanError] = useState<string>();
+  const [cameraActive, setCameraActive] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [cameraError, setCameraError] = useState<string>();
 
   const [productName, setProductName] = useState('');
   const [brand, setBrand] = useState('');
@@ -82,6 +88,13 @@ export default function ScanScreen() {
     : false;
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshCameraPermission();
+    });
+    return () => subscription.remove();
+  }, [refreshCameraPermission]);
+
+  useEffect(() => {
     if (knownProduct && addStatus) {
       const stillOnHand = snapshot.inventory.some(
         (item) => item.productId === knownProduct.id && item.status === 'onHand',
@@ -112,6 +125,9 @@ export default function ScanScreen() {
   }, [addStatus, knownProduct, privateProductId, snapshot.inventory, snapshot.privateProducts]);
 
   const resolveCurrentBarcode = (rawValue = barcode) => {
+    scanLockRef.current = true;
+    setCameraActive(false);
+    setTorchEnabled(false);
     const next = resolveBarcode(rawValue);
     setBarcode(rawValue);
     setResolution(next);
@@ -130,6 +146,10 @@ export default function ScanScreen() {
   };
 
   const resetScan = () => {
+    scanLockRef.current = false;
+    setCameraActive(false);
+    setTorchEnabled(false);
+    setCameraError(undefined);
     setBarcode('');
     setResolution(undefined);
     setScanOperationId(operationId('scan'));
@@ -146,6 +166,43 @@ export default function ScanScreen() {
     setSubmissionId(undefined);
     setProcessing(false);
     setSubmissionError(undefined);
+  };
+
+  const beginCameraScan = async () => {
+    setCameraError(undefined);
+    let permission = cameraPermission;
+    if (!permission?.granted) {
+      try {
+        permission = await requestCameraPermission();
+      } catch {
+        setCameraError('Camera access could not be requested. Enter the barcode manually instead.');
+        return;
+      }
+    }
+    if (!permission.granted) {
+      setCameraError(
+        permission.canAskAgain
+          ? 'Camera access was not granted. You can try again or enter the barcode manually.'
+          : 'Camera access is off in device settings. You can enable it there or enter the barcode manually.',
+      );
+      return;
+    }
+    scanLockRef.current = false;
+    setCameraActive(true);
+  };
+
+  const handleCameraBarcode = (result: BarcodeScanningResult) => {
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
+    resolveCurrentBarcode(result.data);
+  };
+
+  const scanAnother = () => {
+    resetScan();
+    if (cameraPermission?.granted) {
+      scanLockRef.current = false;
+      setCameraActive(true);
+    }
   };
 
   const addKnownBottle = () => {
@@ -251,65 +308,145 @@ export default function ScanScreen() {
             glyph="‹"
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/bar'))}
           />
-          <Text style={styles.topLabel}>BOTTLE SCAN · LOCAL PREVIEW</Text>
+          <Text style={styles.topLabel}>BOTTLE SCAN</Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        <Eyebrow>Milestone 3 simulation</Eyebrow>
-        <Text accessibilityRole="header" style={styles.title}>Resolve a bottle without losing your place.</Text>
+        <Eyebrow>Camera barcode scan</Eyebrow>
+        <Text accessibilityRole="header" style={styles.title}>Point, scan, then confirm.</Text>
         <Text style={styles.subtitle}>
-          The camera, external barcode provider and shared catalogue are not connected in this build. Use a fixture or enter a UPC/EAN to exercise the complete recovery flow locally.
+          Scan a UPC-A or EAN-13 bottle barcode with the rear camera. The code is validated before your bar changes, and manual entry remains available throughout.
         </Text>
 
         <View style={styles.simulationNotice} accessibilityRole="summary">
-          <Text style={styles.simulationGlyph}>⌁</Text>
+          <Text style={styles.simulationGlyph}>⌗</Text>
           <View style={styles.simulationCopy}>
-            <Text style={styles.simulationTitle}>No camera permission requested</Text>
-            <Text style={styles.simulationBody}>This screen validates real UPC-A/EAN-13 checksums, then resolves only against a fictional local fixture catalogue.</Text>
+            <Text style={styles.simulationTitle}>Private camera use</Text>
+            <Text style={styles.simulationBody}>Camera access starts only after you choose it. Frames and photos are not saved or uploaded. Product resolution remains local until a production barcode provider is selected.</Text>
           </View>
         </View>
 
         {!resolution ? (
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Enter a barcode</Text>
-            <Text style={styles.panelBody}>Spaces and hyphens are accepted. Invalid checksums are rejected before lookup.</Text>
-            <Text style={styles.fieldLabel}>UPC-A or EAN-13</Text>
-            <TextInput
-              accessibilityLabel="UPC-A or EAN-13 barcode"
-              value={barcode}
-              onChangeText={(value) => {
-                setBarcode(value);
-                setScanError(undefined);
-              }}
-              keyboardType="number-pad"
-              placeholder="9300000000019"
-              placeholderTextColor={colors.paperDim}
-              style={styles.input}
-              onSubmitEditing={() => resolveCurrentBarcode()}
-            />
-            {scanError ? <Text accessibilityRole="alert" style={styles.error}>{scanError}</Text> : null}
-            <Button label="Resolve barcode" disabled={!barcode.trim()} onPress={() => resolveCurrentBarcode()} />
+          <>
+            <View style={styles.cameraPanel}>
+              <Text style={styles.panelTitle}>Scan with the camera</Text>
+              <Text style={styles.panelBody}>Hold the barcode inside the frame. Scanning pauses after the first detection.</Text>
 
-            <View style={styles.fixtureDivider}>
-              <View style={styles.fixtureLine} />
-              <Text style={styles.fixtureLabel}>USABILITY FIXTURES</Text>
-              <View style={styles.fixtureLine} />
+              {cameraActive && cameraPermission?.granted ? (
+                <>
+                  <View style={styles.cameraShell}>
+                    <CameraView
+                      active={cameraActive}
+                      accessibilityLabel="Live rear camera barcode scanner"
+                      barcodeScannerSettings={{ barcodeTypes: ['ean13', 'upc_a'] }}
+                      enableTorch={torchEnabled}
+                      facing="back"
+                      onBarcodeScanned={handleCameraBarcode}
+                      onMountError={(event) => {
+                        scanLockRef.current = true;
+                        setCameraActive(false);
+                        setTorchEnabled(false);
+                        setCameraError(event.message || 'The camera preview could not start.');
+                      }}
+                      style={styles.camera}
+                    />
+                    <View pointerEvents="none" style={styles.scanFrame}>
+                      <View style={styles.scanLine} />
+                    </View>
+                    <Text pointerEvents="none" style={styles.cameraHint}>ALIGN UPC-A OR EAN-13</Text>
+                  </View>
+                  <View style={styles.cameraActions}>
+                    <Button
+                      label={torchEnabled ? 'Turn torch off' : 'Turn torch on'}
+                      variant="secondary"
+                      onPress={() => setTorchEnabled((enabled) => !enabled)}
+                    />
+                    <Button
+                      label="Close camera"
+                      variant="ghost"
+                      onPress={() => {
+                        scanLockRef.current = true;
+                        setCameraActive(false);
+                        setTorchEnabled(false);
+                      }}
+                    />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.permissionCard}>
+                  <Text style={styles.permissionTitle}>
+                    {cameraPermission?.granted
+                      ? 'Camera ready'
+                      : cameraPermission?.canAskAgain === false
+                        ? 'Camera access is off'
+                        : 'Camera permission is required'}
+                  </Text>
+                  <Text style={styles.permissionBody}>
+                    {cameraPermission?.granted
+                      ? 'Open the rear camera when you are ready to scan.'
+                      : cameraPermission?.canAskAgain === false
+                        ? 'Enable camera access in device settings, or use manual barcode entry below.'
+                        : 'The app uses the live preview only to read the barcode. It does not capture a photo.'}
+                  </Text>
+                  {cameraPermission?.canAskAgain === false ? (
+                    <Button label="Open device settings" variant="secondary" onPress={() => void Linking.openSettings()} />
+                  ) : (
+                    <Button
+                      label={cameraPermission?.granted ? 'Open camera' : 'Allow camera and scan'}
+                      onPress={() => void beginCameraScan()}
+                    />
+                  )}
+                </View>
+              )}
+              {cameraError ? <Text accessibilityRole="alert" style={styles.error}>{cameraError}</Text> : null}
             </View>
-            <View style={styles.fixtureActions}>
-              <Button
-                label="Simulate recognised vodka"
-                variant="secondary"
-                onPress={() => resolveCurrentBarcode(RECOGNISED_FIXTURE)}
-                style={styles.fixtureButton}
+
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Enter a barcode manually</Text>
+              <Text style={styles.panelBody}>Spaces and hyphens are accepted. Invalid checksums are rejected before lookup.</Text>
+              <Text style={styles.fieldLabel}>UPC-A or EAN-13</Text>
+              <TextInput
+                accessibilityLabel="UPC-A or EAN-13 barcode"
+                value={barcode}
+                onChangeText={(value) => {
+                  setBarcode(value);
+                  setScanError(undefined);
+                }}
+                keyboardType="number-pad"
+                placeholder="9300000000019"
+                placeholderTextColor={colors.paperDim}
+                style={styles.input}
+                onFocus={() => {
+                  scanLockRef.current = true;
+                  setCameraActive(false);
+                  setTorchEnabled(false);
+                }}
+                onSubmitEditing={() => resolveCurrentBarcode()}
               />
-              <Button
-                label="Simulate unknown bottle"
-                variant="secondary"
-                onPress={() => resolveCurrentBarcode(UNKNOWN_FIXTURE)}
-                style={styles.fixtureButton}
-              />
+              {scanError ? <Text accessibilityRole="alert" style={styles.error}>{scanError}</Text> : null}
+              <Button label="Resolve barcode" disabled={!barcode.trim()} onPress={() => resolveCurrentBarcode()} />
+
+              <View style={styles.fixtureDivider}>
+                <View style={styles.fixtureLine} />
+                <Text style={styles.fixtureLabel}>TEST FIXTURES</Text>
+                <View style={styles.fixtureLine} />
+              </View>
+              <View style={styles.fixtureActions}>
+                <Button
+                  label="Use recognised test code"
+                  variant="secondary"
+                  onPress={() => resolveCurrentBarcode(RECOGNISED_FIXTURE)}
+                  style={styles.fixtureButton}
+                />
+                <Button
+                  label="Use unknown test code"
+                  variant="secondary"
+                  onPress={() => resolveCurrentBarcode(UNKNOWN_FIXTURE)}
+                  style={styles.fixtureButton}
+                />
+              </View>
             </View>
-          </View>
+          </>
         ) : null}
 
         {resolution?.status === 'invalid' || resolution?.status === 'unavailable' ? (
@@ -326,7 +463,7 @@ export default function ScanScreen() {
         {resolution?.status === 'verified' ? (
           <View style={styles.resultPanel} accessibilityLiveRegion="polite">
             <View style={styles.resultHeader}>
-              <InlinePill label="Verified local fixture" tone="ready" />
+              <InlinePill label="Verified local product" tone="ready" />
               <Text style={styles.barcodeText}>{resolution.canonicalBarcode}</Text>
             </View>
             <Text style={styles.resultEyebrow}>{resolution.product.brand}</Text>
@@ -366,7 +503,7 @@ export default function ScanScreen() {
               {!addStatus ? <Button label="Add this bottle" onPress={addKnownBottle} /> : null}
               {addStatus ? <Button label="See updated recommendations" onPress={() => router.replace('/(tabs)/tonight')} /> : null}
               <Button label="Open My Bar" variant="secondary" onPress={() => router.replace('/(tabs)/bar')} />
-              <Button label="Scan another" variant="ghost" onPress={resetScan} />
+              <Button label="Scan another" variant="ghost" onPress={scanAnother} />
             </View>
           </View>
         ) : null}
@@ -541,7 +678,7 @@ export default function ScanScreen() {
                 <View style={styles.actions}>
                   <Button label="Open My Bar" onPress={() => router.replace('/(tabs)/bar')} />
                   <Button label="See recommendations" variant="secondary" onPress={() => router.replace('/(tabs)/tonight')} />
-                  <Button label="Scan another" variant="ghost" onPress={resetScan} />
+                    <Button label="Scan another" variant="ghost" onPress={scanAnother} />
                 </View>
               </View>
             )}
@@ -591,6 +728,16 @@ const styles = StyleSheet.create({
   simulationCopy: { flex: 1 },
   simulationTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
   simulationBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  cameraPanel: { gap: spacing.lg, marginTop: spacing.xxl, borderRadius: radius.xl, borderWidth: 1, borderColor: 'rgba(215,170,98,0.28)', backgroundColor: colors.surface, padding: spacing.xl },
+  cameraShell: { height: 300, overflow: 'hidden', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.inkRaised },
+  camera: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  scanFrame: { position: 'absolute', left: spacing.xxl, right: spacing.xxl, top: 82, height: 126, borderRadius: radius.md, borderWidth: 2, borderColor: colors.brass, justifyContent: 'center' },
+  scanLine: { height: 2, marginHorizontal: spacing.md, backgroundColor: colors.brass, opacity: 0.8 },
+  cameraHint: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.md, color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1.2, textAlign: 'center', textShadowColor: colors.ink, textShadowRadius: 5 },
+  cameraActions: { gap: spacing.sm },
+  permissionCard: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.inkRaised },
+  permissionTitle: { color: colors.paper, fontFamily: fonts.bodyMedium, fontSize: 13 },
+  permissionBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   panel: { gap: spacing.lg, marginTop: spacing.xxl, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.surface, padding: spacing.xl },
   panelTitle: { color: colors.paper, fontFamily: fonts.display, fontSize: 27 },
   panelBody: { color: colors.paperMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },

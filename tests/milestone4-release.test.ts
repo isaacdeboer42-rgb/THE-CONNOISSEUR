@@ -26,6 +26,28 @@ describe('Milestone 4 release configuration', () => {
     expect(eas.submit.production).toEqual({});
   });
 
+  it('configures opt-in barcode camera scanning without microphone access', () => {
+    const config = readJson('app.json').expo;
+    const packageJson = readJson('package.json');
+    const cameraPlugin = config.plugins.find(
+      (plugin: unknown) => Array.isArray(plugin) && plugin[0] === 'expo-camera',
+    );
+    const scanSource = fs.readFileSync(path.join(root, 'app/scan.tsx'), 'utf8');
+
+    expect(packageJson.dependencies['expo-camera']).toMatch(/^~58\./);
+    expect(cameraPlugin).toEqual([
+      'expo-camera',
+      expect.objectContaining({
+        barcodeScannerEnabled: true,
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      }),
+    ]);
+    expect(scanSource).toContain('useCameraPermissions');
+    expect(scanSource).toContain("barcodeTypes: ['ean13', 'upc_a']");
+    expect(scanSource).toContain('onBarcodeScanned={handleCameraBarcode}');
+  });
+
   it('ships the launch handover set', () => {
     [
       'docs/RELEASE_READINESS.md',

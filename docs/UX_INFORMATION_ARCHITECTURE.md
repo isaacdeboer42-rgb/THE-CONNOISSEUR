@@ -41,7 +41,7 @@ Sample path: Welcome → Explore sample → labelled sample Tonight. Exit switch
 
 ### Inventory and scanning
 
-My Bar → Scan bottle → contextual simulation boundary/permission primer → scan fixture or manual barcode → validating/lookup → recognised result. Duplicate returns “already on hand”; out-of-stock product is restored; generic overlap asks Replace generic or Keep both. Success offers inventory correction through Undo and a return to My Bar.
+My Bar → Scan bottle → contextual permission/privacy primer → live camera or manual barcode → checksum validation/local lookup → recognised or private-recovery result. Duplicate returns “already on hand”; out-of-stock product is restored; generic overlap asks Replace generic or Keep both. Success offers inventory correction through Undo and a return to My Bar.
 
 Unknown path: lookup failure/unknown → Add as new → name and ingredient category required → optional brand, size and local label reference → private save succeeds before sharing is offered → optional submission → processing → pending review or recoverable failure. Back preserves entered fields while the route remains mounted; saved private data survives later provider/AI failure.
 

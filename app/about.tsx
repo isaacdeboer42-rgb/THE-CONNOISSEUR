@@ -11,6 +11,7 @@ import { colors, fonts, radius, spacing } from '@/theme/tokens';
 const facts = [
   ['Storage', 'Inventory, saves, preferences, private bottle records and tasting notes stay in local app storage.'],
   ['Network', 'Discover reads a public cocktail catalogue from Mixology Tools. Search text is sent to that service; your bar, saves, private bottles and tasting notes are not. No analytics service is connected.'],
+  ['Camera', 'Bottle scanning uses the live rear-camera preview only after permission is granted. Frames and photos are not saved or uploaded.'],
   ['Photos', 'Label-photo references are local URIs. They are not uploaded by this build.'],
   ['Accounts', 'Account and recovery screens are a local migration preview, not authentication or cloud backup.'],
   ['Deletion', 'Reset guest bar clears guest data. Uninstalling the app clears its local storage; preview-account deletion requires a production identity service.'],

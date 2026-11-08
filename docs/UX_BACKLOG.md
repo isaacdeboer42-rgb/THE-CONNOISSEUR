@@ -4,9 +4,9 @@ Tickets describe remaining production work; prototype-complete behaviour is note
 
 ## P0 — before moderated usability
 
-### UX-101 · Physical camera and permission flow
+### UX-101 · Physical camera and permission flow — implemented, device evidence pending
 
-**Outcome:** participants can complete recognised and unknown scan tasks on phones. **Specification:** contextual primer after Scan bottle; request system camera permission; viewfinder guidance; pause after detection; manual path always visible; text plus optional haptic. **Dependencies:** `expo-camera`, supported iOS/Android matrix. **Data:** permission state, symbology, original/canonical code, operation ID. **Acceptance:** denied permission reaches manual entry; repeated frames create one operation; background/resume does not duplicate; VoiceOver/TalkBack announce result.
+**Outcome:** participants can complete recognised and unknown scan tasks on phones. **Implemented:** contextual primer after Scan bottle; explicit system camera permission; rear-camera viewfinder guidance; UPC-A/EAN-13 filtering; pause/lock after detection; torch; settings recovery; manual path always visible. **Dependencies:** `expo-camera`, supported iOS/Android matrix. **Data:** permission state, symbology, original/canonical code, operation ID. **Remaining acceptance evidence:** denied permission reaches manual entry on physical devices; repeated frames create one operation; background/resume does not duplicate; VoiceOver/TalkBack announce result.
 
 ### UX-102 · Provider adapter and offline recovery
 
